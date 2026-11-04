@@ -7,50 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <div class="header-top">
-            <h1>📚 ЭБ-5-23</h1>
-            
-            <!-- Выбор группы -->
-            <div class="group-switch">
-                <button data-group="1" class="group-btn">1</button>
-                <button data-group="both" class="group-btn active">Обе</button>
-                <button data-group="2" class="group-btn">2</button>
-            </div>
+    <!-- Верхняя навигация -->
+    <div class="header-nav">
+        <div class="week-nav">
+            <button id="prevWeek" title="Предыдущая неделя">‹</button>
+            <h1 class="current-week-title" id="weekTitle">Текущая неделя</h1>
+            <button id="nextWeek" title="Следующая неделя">›</button>
         </div>
-        
-        <!-- Три круглые кнопки в ряд -->
-        <div class="round-buttons">
-            <button id="btnSchedule" class="round-btn active">
-                <span class="round-icon">📋</span>
-                <span class="round-label">Расписание</span>
-            </button>
-            <button id="btnSession" class="round-btn">
-                <span class="round-icon">🎓</span>
-                <span class="round-label">Сессия</span>
-            </button>
-            <button id="btnCalendar" class="round-btn">
-                <span class="round-icon">📅</span>
-                <span class="round-label">Календарь</span>
-            </button>
+        <div class="top-buttons">
+            <button id="calendarBtn" class="top-btn">📆 Календарь</button>
+            <button id="scheduleBtn" class="top-btn active">📅 Расписание</button>
         </div>
-        
-        <!-- Навигация для списка (недели) -->
-        <div id="weekNav" class="nav-bar">
-            <button id="prevWeek" class="nav-btn">‹</button>
-            <span id="weekTitle" class="nav-title">Текущая неделя</span>
-            <button id="nextWeek" class="nav-btn">›</button>
-            <button id="todayWeek" class="today-btn">Сегодня</button>
-        </div>
-        
-        <!-- Навигация для календаря (месяцы) -->
-        <div id="monthNav" class="nav-bar hidden">
-            <button id="prevMonth" class="nav-btn">‹</button>
-            <span id="monthTitle" class="nav-title">Ноябрь 2026</span>
-            <button id="nextMonth" class="nav-btn">›</button>
-            <button id="todayMonth" class="today-btn">Сегодня</button>
-        </div>
-    </header>
+    </div>
 
     <main>
         <div id="scheduleView">
@@ -58,21 +26,23 @@
         </div>
 
         <div id="calendarView" class="hidden">
-            <div class="calendar-weekdays">
-                <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="weekend">Сб</div><div class="weekend">Вс</div>
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button id="prevMonth" class="nav-arrow">‹</button>
+                    <h2 id="calendarMonthTitle">Месяц</h2>
+                    <button id="nextMonth" class="nav-arrow">›</button>
+                </div>
+                <div id="calendarGrid" class="calendar-grid"></div>
             </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
         </div>
     </main>
 
-    <!-- Уведомление об изменениях -->
-    <div id="changelogBanner" class="changelog-banner hidden">
+    <footer id="changelogFooter" class="hidden">
         <div class="changelog-content">
             <strong>🔄 Обновлено:</strong> <span id="updateDate"></span>
             <ul id="updateChanges"></ul>
         </div>
-        <button id="closeChangelog" class="close-btn">✕</button>
-    </div>
+    </footer>
 
     <script src="script.js"></script>
 </body>
