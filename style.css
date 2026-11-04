@@ -25,6 +25,7 @@ body {
     padding-bottom: 100px;
 }
 
+/* Header */
 .header-nav {
     background-color: var(--primary-gray);
     color: white;
@@ -37,11 +38,11 @@ body {
 .week-nav {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
-.week-nav button {
+.arrow-btn {
     background: rgba(255,255,255,0.2);
     border: none;
     color: white;
@@ -49,53 +50,82 @@ body {
     height: 36px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     transition: background 0.2s;
 }
 
-.week-nav button:hover {
+.arrow-btn:hover {
     background: rgba(255,255,255,0.3);
 }
 
-.week-nav button:disabled {
+.arrow-btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+.today-btn {
+    background: rgba(255,255,255,0.25);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.today-btn:hover {
+    background: rgba(255,255,255,0.4);
 }
 
 .current-week-title {
     flex: 1;
     text-align: center;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.top-buttons {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
+/* Выбор группы */
+.group-select-wrapper {
+    width: 100%;
 }
 
-.top-btn {
-    background: rgba(255,255,255,0.2);
+.group-select {
+    width: 100%;
+    padding: 10px 12px;
     border: none;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.2s;
-}
-
-.top-btn.active {
-    background: white;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.95);
     color: var(--primary-gray);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a4a4a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 18px;
+    padding-right: 35px;
 }
 
-.top-btn:hover {
-    background: rgba(255,255,255,0.3);
+.group-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
+}
+
+/* Карточки дней */
+.schedule-list {
+    padding: 8px 0;
 }
 
 .day-block {
@@ -197,6 +227,7 @@ body {
     color: white;
 }
 
+/* Календарь */
 .calendar-container {
     padding: 16px;
 }
@@ -280,6 +311,7 @@ body {
     margin-top: 4px;
     font-size: 0.65rem;
     line-height: 1.2;
+    text-align: center;
 }
 
 .cal-time {
@@ -303,6 +335,57 @@ body {
     font-size: 0.6rem;
 }
 
+/* Круглые кнопки внизу */
+.bottom-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 100;
+}
+
+.nav-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-gray);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transition: transform 0.2s, background 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px);
+    background: var(--secondary-gray);
+}
+
+.nav-btn.active {
+    background: var(--secondary-gray);
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+.nav-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.nav-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Ченджлог */
 #changelogFooter {
     position: fixed;
     bottom: 0;
@@ -313,6 +396,12 @@ body {
     padding: 12px 16px;
     font-size: 0.85rem;
     z-index: 99;
+}
+
+.changelog-content ul {
+    margin: 6px 0 0 0;
+    padding-left: 20px;
+    line-height: 1.4;
 }
 
 .hidden {
@@ -331,5 +420,10 @@ body {
     
     .cal-lesson-info {
         font-size: 0.6rem;
+    }
+    
+    .nav-btn {
+        width: 64px;
+        height: 64px;
     }
 }
