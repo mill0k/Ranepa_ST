@@ -5,8 +5,8 @@ let sessionData = [];
 let currentWeekOffset = 0;
 let currentMonthOffset = 0;
 let selectedGroup = 'all';
+let changelogData = [];
 
-// Границы расписания
 let minDate = null;
 let maxDate = null;
 
@@ -22,12 +22,14 @@ async function loadData() {
         if (scheduleRes.ok) scheduleData = await scheduleRes.json();
         if (sessionRes.ok) sessionData = await sessionRes.json();
         
-        // Вычисляем границы расписания
         computeDateBounds(scheduleData);
+        computeDateBounds(sessionData);
         
         if (changelogRes.ok) {
             const changelog = await changelogRes.json();
             document.getElementById('updateDate').textContent = changelog.date;
+            document.getElementById('lastUpdateDate').textContent = changelog.date;
+            
             const changesList = document.getElementById('updateChanges');
             changesList.innerHTML = '';
             changelog.changes.forEach(change => {
@@ -36,6 +38,19 @@ async function loadData() {
                 changesList.appendChild(li);
             });
             document.getElementById('changelogFooter').classList.remove('hidden');
+            
+            // Заполняем панель обновлений
+            const panelChanges = document.getElementById('changesList');
+            panelChanges.innerHTML = '';
+            changelog.changes.forEach(change => {
+                const div = document.createElement('div');
+                div.className = 'change-item';
+                div.innerHTML = `
+                    <div class="change-date">${changelog.date}</div>
+                    <div class="change-details">${change}</div>
+                `;
+                panelChanges.appendChild(div);
+            });
         }
         
         render();
@@ -45,21 +60,39 @@ async function loadData() {
     }
 }
 
+function getYearForDate(month) {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    let year = now.getFullYear();
+    
+    // Если месяц занятия меньше текущего — значит следующий год
+    if (month < currentMonth) {
+        year++;
+    }
+    // Если месяц равен текущему, но день уже прошёл — тоже следующий год
+    if (month === currentMonth) {
+        // Оставляем текущий год
+    }
+    
+    return year;
+}
+
 function computeDateBounds(data) {
     const dates = [];
     data.forEach(l => {
         if (!l.date || !l.month) return;
         const d = parseInt(l.date);
         const m = parseInt(l.month);
-        let year = 2026;
-        // Если месяц 1, а сейчас декабрь — значит следующий год
-        if (m === 1 && new Date().getMonth() === 11) year = 2027;
+        const year = getYearForDate(m);
         dates.push(new Date(year, m - 1, d));
     });
     
     if (dates.length > 0) {
-        minDate = new Date(Math.min(...dates));
-        maxDate = new Date(Math.max(...dates));
+        const min = new Date(Math.min(...dates));
+        const max = new Date(Math.max(...dates));
+        
+        if (!minDate || min < minDate) minDate = min;
+        if (!maxDate || max > maxDate) maxDate = max;
     }
 }
 
@@ -106,29 +139,38 @@ function renderScheduleList(data) {
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
-        return new Date(2026, m1-1, d1) - new Date(2026, m2-1, d2);
+        const year1 = getYearForDate(m1);
+        const year2 = getYearForDate(m2);
+        return new Date(year1, m1-1, d1) - new Date(year2, m2-1, d2);
     });
     
-    const today = new Date();
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    
-    const weekDates = [];
-    for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
-        weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
+    // Для сессии показываем все даты, для расписания — текущую неделю
+    let datesToShow;
+    if (currentMode === 'session') {
+        datesToShow = sortedDates;
+    } else {
+        const today = new Date();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        const weekDates = [];
+        for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+            weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
+        }
+        
+        const filteredDates = sortedDates.filter(date => weekDates.includes(date));
+        datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, 7);
     }
     
-    const filteredDates = sortedDates.filter(date => weekDates.includes(date));
-    
-    // Если на выбранной неделе нет занятий — показываем сообщение, НЕ возвращаем в начало
-    if (filteredDates.length === 0) {
-        const dayNames = {
-            'Пн.': 'Понедельник', 'Вт.': 'Вторник', 'Ср.': 'Среда',
-            'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
-        };
-        const startDayName = dayNames[weekStart.toLocaleDateString('ru-RU', { weekday: 'short' }) + '.'] || '';
+    if (datesToShow.length === 0) {
+        const today = new Date();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
         container.innerHTML = `
             <div style="text-align:center; color: #757575; padding: 40px 20px;">
                 <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
@@ -138,15 +180,17 @@ function renderScheduleList(data) {
         return;
     }
     
+    const today = new Date();
     const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
     
-    filteredDates.forEach(dateKey => {
+    datesToShow.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
-        const lessonDate = new Date(2026, month - 1, day);
+        const year = getYearForDate(month);
+        const lessonDate = new Date(year, month - 1, day);
         const dayOfWeek = lessonDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isToday = dateKey === todayStr;
+        const isToday = dateKey === todayStr && year === today.getFullYear();
         
         const dayBlock = document.createElement('div');
         dayBlock.className = 'day-block' + (isWeekend ? ' weekend' : '');
@@ -158,7 +202,7 @@ function renderScheduleList(data) {
             'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
         };
         header.innerHTML = `
-            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}</span>
+            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}.${year}</span>
             ${isToday ? '<span style="font-size:0.8rem">📍 Сегодня</span>' : ''}
             ${isWeekend && !isToday ? '<span style="font-size:0.8rem; color:#f44336">Выходной</span>' : ''}
         `;
@@ -300,14 +344,12 @@ function updateWeekButtons() {
     const prevBtn = document.getElementById('prevWeek');
     const nextBtn = document.getElementById('nextWeek');
     
-    // Блокируем кнопку "назад", если неделя раньше минимальной даты расписания
     if (minDate && weekEnd < minDate) {
         prevBtn.disabled = true;
     } else {
         prevBtn.disabled = false;
     }
     
-    // Блокируем кнопку "вперёд", если неделя позже максимальной даты расписания
     if (maxDate && weekStart > maxDate) {
         nextBtn.disabled = true;
     } else {
@@ -334,7 +376,6 @@ document.getElementById('prevWeek').addEventListener('click', () => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
-    // Не даём уйти раньше минимальной даты
     if (minDate && weekEnd < minDate) return;
     
     currentWeekOffset--;
@@ -346,7 +387,6 @@ document.getElementById('nextWeek').addEventListener('click', () => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset + 1) * 7));
     
-    // Не даём уйти позже максимальной даты
     if (maxDate && weekStart > maxDate) return;
     
     currentWeekOffset++;
@@ -387,6 +427,24 @@ document.getElementById('calendarBtn').addEventListener('click', () => {
 document.getElementById('groupSelect').addEventListener('change', (e) => {
     selectedGroup = e.target.value;
     render();
+});
+
+// Панель обновлений
+document.getElementById('updatesBtn').addEventListener('click', () => {
+    document.getElementById('updatesPanel').classList.remove('hidden');
+});
+
+document.getElementById('closeUpdates').addEventListener('click', () => {
+    document.getElementById('updatesPanel').classList.add('hidden');
+});
+
+// Закрытие по клику вне панели
+document.addEventListener('click', (e) => {
+    const panel = document.getElementById('updatesPanel');
+    const btn = document.getElementById('updatesBtn');
+    if (!panel.contains(e.target) && !btn.contains(e.target)) {
+        panel.classList.add('hidden');
+    }
 });
 
 // Инициализация
