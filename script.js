@@ -86,23 +86,7 @@ function computeDateBounds(data, type) {
 
 function render() {
     const data = currentMode === 'schedule' ? scheduleData : sessionData;
-    
-    if (currentView === 'list') {
-        document.getElementById('scheduleView').classList.remove('hidden');
-        document.getElementById('calendarView').classList.add('hidden');
-        document.getElementById('historyView').classList.add('hidden');
-        renderScheduleList(data);
-    } else if (currentView === 'calendar') {
-        document.getElementById('scheduleView').classList.add('hidden');
-        document.getElementById('calendarView').classList.remove('hidden');
-        document.getElementById('historyView').classList.add('hidden');
-        renderCalendar(data);
-    } else if (currentView === 'history') {
-        document.getElementById('scheduleView').classList.add('hidden');
-        document.getElementById('calendarView').classList.add('hidden');
-        document.getElementById('historyView').classList.remove('hidden');
-        renderHistory();
-    }
+    renderScheduleList(data);
     updateWeekTitle();
     updateWeekButtons();
 }
@@ -220,16 +204,24 @@ function renderScheduleList(data) {
     });
 }
 
-function renderCalendar(data) {
+function renderCalendar() {
     const container = document.getElementById('calendarGrid');
     container.innerHTML = '';
     
+    const data = currentMode === 'schedule' ? scheduleData : sessionData;
     const filteredData = filterByGroup(data);
     
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + currentMonthOffset;
+    
+    // Ограничение: только прошлый, текущий и следующий месяц
+    const minMonthOffset = -1;
+    const maxMonthOffset = 1;
+    
+    document.getElementById('prevMonth').disabled = currentMonthOffset <= minMonthOffset;
+    document.getElementById('nextMonth').disabled = currentMonthOffset >= maxMonthOffset;
     
     document.getElementById('calendarMonthTitle').textContent = `${monthNames[currentMonth % 12]} ${currentYear}`;
     
@@ -269,7 +261,12 @@ function renderCalendar(data) {
         const dayOfWeek = new Date(year, month, d).getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         
+        // Прошедшие дни
+        const lessonDate = new Date(year, month, d);
+        const isPast = lessonDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
         if (isWeekend) div.classList.add('weekend');
+        if (isPast) div.classList.add('past');
         if (d === today.getDate() && (currentMonth % 12) === today.getMonth() && currentMonthOffset === 0) {
             div.classList.add('today');
         }
@@ -277,25 +274,30 @@ function renderCalendar(data) {
         if (lessonDates[dateStr]) {
             div.classList.add('has-lessons');
             const hasDSR = lessonDates[dateStr].some(l => l.type === 'ДСР');
+            const hasSDO = lessonDates[dateStr].some(l => l.type === 'СДО' || (l.room && l.room.includes('СДО')));
             if (hasDSR) div.classList.add('dsr-day');
+            if (hasSDO) div.classList.add('sdo-day');
             
             const firstLesson = lessonDates[dateStr][0];
             
             const lessonInfo = document.createElement('div');
             lessonInfo.className = 'cal-lesson-info';
+            
+            // Определяем формат
+            let format = 'Очно';
+            if (firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'))) {
+                format = 'ДСР';
+            } else if (firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'))) {
+                format = 'СДО';
+            }
+            
             lessonInfo.innerHTML = `
                 <div class="cal-time">${firstLesson.time || ''}</div>
-                <div class="cal-subject">${firstLesson.subject || ''}</div>
                 <div class="cal-type">${firstLesson.type || ''}</div>
+                <div class="cal-format">${format}</div>
             `;
             div.appendChild(lessonInfo);
         }
-        
-        div.addEventListener('click', () => {
-            currentView = 'list';
-            updateNavButtons();
-            render();
-        });
         
         container.appendChild(div);
     }
@@ -360,8 +362,8 @@ function updateWeekButtons() {
 
 function updateNavButtons() {
     document.getElementById('scheduleBtn').classList.toggle('active', currentView === 'list');
-    document.getElementById('calendarBtn').classList.toggle('active', currentView === 'calendar');
-    document.getElementById('historyBtn').classList.toggle('active', currentView === 'history');
+    document.getElementById('calendarBtn').classList.remove('active');
+    document.getElementById('historyBtn').classList.remove('active');
     
     const scheduleBtn = document.getElementById('scheduleBtn');
     const label = scheduleBtn.querySelector('.nav-label');
@@ -370,7 +372,33 @@ function updateNavButtons() {
     }
 }
 
-// Вычисляет смещение недели так, чтобы weekStart совпадал с нужной датой
+function openCalendar() {
+    document.getElementById('calendarPanel').classList.add('active');
+    document.getElementById('overlay').classList.add('active');
+    renderCalendar();
+}
+
+function closeCalendar() {
+    document.getElementById('calendarPanel').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+}
+
+function openHistory() {
+    document.getElementById('historyPanel').classList.add('active');
+    document.getElementById('overlay').classList.add('active');
+    renderHistory();
+}
+
+function closeHistory() {
+    document.getElementById('historyPanel').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+}
+
+function closeAllPanels() {
+    closeCalendar();
+    closeHistory();
+}
+
 function getWeekOffsetForDate(targetDate) {
     const today = new Date();
     const currentWeekStart = new Date(today);
@@ -421,46 +449,39 @@ document.getElementById('todayBtn').addEventListener('click', () => {
 
 document.getElementById('prevMonth').addEventListener('click', () => {
     currentMonthOffset--;
-    render();
+    renderCalendar();
 });
 
 document.getElementById('nextMonth').addEventListener('click', () => {
     currentMonthOffset++;
-    render();
+    renderCalendar();
 });
 
 document.getElementById('scheduleBtn').addEventListener('click', () => {
-    if (currentView === 'calendar' || currentView === 'history') {
-        currentView = 'list';
-    } else {
-        if (currentMode === 'schedule') {
-            // Переключаемся на сессию — переходим к первой неделе сессии
-            currentMode = 'session';
-            if (sessionMinDate) {
-                currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
-            } else {
-                currentWeekOffset = 0;
-            }
+    closeAllPanels();
+    if (currentMode === 'schedule') {
+        currentMode = 'session';
+        if (sessionMinDate) {
+            currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
         } else {
-            // Переключаемся на расписание — возвращаемся к текущей неделе
-            currentMode = 'schedule';
             currentWeekOffset = 0;
         }
+    } else {
+        currentMode = 'schedule';
+        currentWeekOffset = 0;
     }
     updateNavButtons();
     render();
 });
 
 document.getElementById('calendarBtn').addEventListener('click', () => {
-    currentView = 'calendar';
-    updateNavButtons();
-    render();
+    openCalendar();
+    document.getElementById('calendarBtn').classList.add('active');
 });
 
 document.getElementById('historyBtn').addEventListener('click', () => {
-    currentView = 'history';
-    updateNavButtons();
-    render();
+    openHistory();
+    document.getElementById('historyBtn').classList.add('active');
 });
 
 document.getElementById('groupSelect').addEventListener('change', (e) => {
