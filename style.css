@@ -277,3 +277,231 @@ body {
 
 .cal-day {
     aspect-ratio: 1;
+    background: var(--card-bg);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    cursor: pointer;
+    border: 1px solid var(--light-gray);
+    min-height: 36px;
+    max-height: 40px;
+    position: relative;
+    padding: 1px;
+    overflow: hidden;
+}
+
+.cal-day.weekend {
+    background: var(--weekend-bg);
+}
+
+.cal-day.today {
+    border: 2px solid var(--today-border);
+    font-weight: 700;
+}
+
+.cal-day.has-lessons {
+    background: #e8e8e8;
+}
+
+.cal-day.dsr-day {
+    background: #fff3e0;
+}
+
+.cal-lesson-info {
+    width: 100%;
+    margin-top: 1px;
+    font-size: 0.45rem;
+    line-height: 1;
+    text-align: center;
+    overflow: hidden;
+}
+
+.cal-time {
+    font-weight: 700;
+    color: var(--secondary-gray);
+    font-size: 0.45rem;
+}
+
+.cal-subject {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.4rem;
+}
+
+.cal-type {
+    color: var(--text-secondary);
+    font-size: 0.4rem;
+}
+
+/* История обновлений */
+.history-container {
+    padding: 16px;
+}
+
+.history-title {
+    font-size: 1.2rem;
+    color: var(--primary-gray);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.history-content {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.history-update {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.history-update:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.history-date {
+    font-weight: 700;
+    color: var(--primary-gray);
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+
+.history-changes {
+    padding-left: 0;
+    list-style: none;
+}
+
+.history-changes li {
+    padding: 8px 12px;
+    background: var(--bg-color);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    line-height: 1.4;
+}
+
+.history-changes li:last-child {
+    margin-bottom: 0;
+}
+
+.no-history {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 40px 20px;
+    font-size: 0.95rem;
+}
+
+/* Круглые кнопки внизу (всегда видны) */
+.bottom-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 100;
+}
+
+.nav-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-gray);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transition: transform 0.2s, background 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px);
+    background: var(--secondary-gray);
+}
+
+.nav-btn.active {
+    background: var(--secondary-gray);
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+.nav-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.nav-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Ченджлог внизу */
+#changelogFooter {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--primary-gray);
+    color: white;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    z-index: 99;
+}
+
+.changelog-content ul {
+    margin: 6px 0 0 0;
+    padding-left: 20px;
+    line-height: 1.4;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 480px) {
+    .lesson {
+        grid-template-columns: 50px 1fr;
+        font-size: 0.85rem;
+    }
+    
+    .cal-day {
+        min-height: 32px;
+        max-height: 36px;
+        font-size: 0.65rem;
+    }
+    
+    .cal-lesson-info {
+        font-size: 0.4rem;
+    }
+    
+    .cal-subject {
+        font-size: 0.35rem;
+    }
+    
+    .nav-btn {
+        width: 66px;
+        height: 66px;
+    }
+    
+    .history-title {
+        font-size: 1.1rem;
+    }
+}
