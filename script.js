@@ -12,6 +12,41 @@ let scheduleMaxDate = null;
 let sessionMinDate = null;
 let sessionMaxDate = null;
 
+// Структура учебного года (даты начала и конца периодов)
+const academicYear = {
+    // 4 курс
+    semester1_4: { start: '2026-09-01', end: '2026-12-31', name: '1 семестр 4 курса' },
+    session1_4: { start: '2027-01-01', end: '2027-02-28', name: 'Сессия 1 семестра 4 курса' },
+    semester2_4: { start: '2027-02-01', end: '2027-05-31', name: '2 семестр 4 курса' },
+    session2_4: { start: '2027-06-01', end: '2027-07-31', name: 'Сессия 2 семестра 4 курса' },
+    
+    // 5 курс
+    semester1_5: { start: '2027-09-01', end: '2027-12-31', name: '1 семестр 5 курса' },
+    session1_5: { start: '2028-01-01', end: '2028-02-28', name: 'Сессия 1 семестра 5 курса' },
+    semester2_5: { start: '2028-02-01', end: '2028-05-31', name: '2 семестр 5 курса' },
+    session2_5: { start: '2028-06-01', end: '2028-07-31', name: 'Сессия 2 семестра 5 курса' }
+};
+
+// Определяем текущий период на основе даты
+function getCurrentPeriod(date = new Date()) {
+    const dateStr = date.toISOString().split('T')[0];
+    
+    for (let key in academicYear) {
+        const period = academicYear[key];
+        if (dateStr >= period.start && dateStr <= period.end) {
+            return { key, ...period };
+        }
+    }
+    
+    // Если не попали ни в один период, возвращаем ближайший
+    return null;
+}
+
+// Определяем, является ли период сессией
+function isSessionPeriod(periodKey) {
+    return periodKey && periodKey.includes('session');
+}
+
 async function loadData() {
     try {
         const t = Date.now();
@@ -40,6 +75,18 @@ async function loadData() {
             document.getElementById('changelogFooter').classList.remove('hidden');
         }
         
+        // Автоматически определяем режим на основе текущей даты
+        const currentPeriod = getCurrentPeriod();
+        if (currentPeriod && isSessionPeriod(currentPeriod.key)) {
+            currentMode = 'session';
+            if (sessionMinDate) {
+                currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
+            }
+        } else {
+            currentMode = 'schedule';
+            currentWeekOffset = 0;
+        }
+        
         render();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
@@ -52,10 +99,33 @@ function getDateFromDayMonth(d, m) {
     let year = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    if (m <= 2 && currentMonth >= 10) {
-        year++;
-    } else if (m >= 11 && currentMonth <= 2) {
-        year--;
+    // Логика определения года на основе периода
+    const currentPeriod = getCurrentPeriod();
+    
+    if (currentPeriod) {
+        // Если мы в сессии (декабрь-февраль или июнь-июль)
+        if (isSessionPeriod(currentPeriod.key)) {
+            if (m >= 11 || m <= 2) {
+                // Ноябрь-февраль - это сессия текущего учебного года
+                if (m <= 2) year++; // Январь-февраль следующего года
+            }
+        } else {
+            // Если мы в семестре
+            if (m >= 9 && m <= 12 && currentMonth >= 1 && currentMonth <= 7) {
+                // Сентябрь-декабрь, но сейчас январь-июль - значит это прошлый год
+                year--;
+            } else if (m >= 1 && m <= 7 && currentMonth >= 9 && currentMonth <= 12) {
+                // Январь-июль, но сейчас сентябрь-декабрь - значит это следующий год
+                year++;
+            }
+        }
+    } else {
+        // Стандартная логика если период не определен
+        if (m <= 2 && currentMonth >= 10) {
+            year++;
+        } else if (m >= 11 && currentMonth <= 2) {
+            year--;
+        }
     }
     
     return new Date(year, m - 1, d);
@@ -135,10 +205,14 @@ function renderScheduleList(data) {
     const filteredDates = sortedDates.filter(date => weekDates.includes(date));
     
     if (filteredDates.length === 0) {
+        const currentPeriod = getCurrentPeriod();
+        const periodName = currentPeriod ? currentPeriod.name : 'текущий период';
+        
         container.innerHTML = `
             <div style="text-align:center; color: #757575; padding: 40px 20px;">
                 <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
-                <p style="font-size: 0.9rem;">${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} — ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}</p>
+                <p style="font-size: 0.9rem; margin-bottom: 12px;">${periodName}</p>
+                <p style="font-size: 0.85rem;">${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} — ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}</p>
             </div>
         `;
         return;
@@ -224,7 +298,6 @@ function renderCalendar() {
     
     document.getElementById('calendarMonthTitle').textContent = `${monthNames[currentMonth % 12]} ${currentYear}`;
     
-    // Заголовки дней недели: Пн, Вт, Ср, Чт, Пт, Сб, Вс
     const dayHeaders = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     dayHeaders.forEach(day => {
         const div = document.createElement('div');
@@ -236,16 +309,12 @@ function renderCalendar() {
     const year = currentYear;
     const month = currentMonth % 12;
     
-    // Правильный расчет смещения для начала недели с понедельника
     const firstDayOfMonth = new Date(year, month, 1);
-    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0=Вс, 1=Пн, 2=Вт, ...
-    
-    // Преобразуем: Вс(0)->6, Пн(1)->0, Вт(2)->1, Ср(3)->2, Чт(4)->3, Пт(5)->4, Сб(6)->5
+    const firstDayOfWeek = firstDayOfMonth.getDay();
     const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
     
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    // Пустые ячейки до первого дня месяца
     for (let i = 0; i < startOffset; i++) {
         const div = document.createElement('div');
         div.className = 'cal-day empty';
@@ -259,20 +328,18 @@ function renderCalendar() {
         lessonDates[l.date].push(l);
     });
     
-    // Заполняем дни месяца
     for (let d = 1; d <= daysInMonth; d++) {
         const div = document.createElement('div');
         div.className = 'cal-day';
         
         const dateStr = String(d).padStart(2, '0');
         const currentDayDate = new Date(year, month, d);
-        const dayOfWeek = currentDayDate.getDay(); // 0=Вс, 1=Пн, ...
+        const dayOfWeek = currentDayDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         const isSunday = dayOfWeek === 0;
         
         const isPast = currentDayDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
         
-        // Добавляем номер дня
         const dayNumber = document.createElement('div');
         dayNumber.textContent = d;
         dayNumber.style.fontWeight = '600';
@@ -285,7 +352,6 @@ function renderCalendar() {
             div.classList.add('today');
         }
         
-        // Воскресенье всегда пустое - не показываем занятия
         if (!isSunday && lessonDates[dateStr]) {
             const firstLesson = lessonDates[dateStr][0];
             
@@ -341,7 +407,13 @@ function updateWeekTitle() {
     weekEnd.setDate(weekStart.getDate() + 6);
     
     const title = `${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} - ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}`;
-    document.getElementById('weekTitle').textContent = currentWeekOffset === 0 ? 'Текущая неделя' : title;
+    
+    const currentPeriod = getCurrentPeriod();
+    const periodName = currentPeriod ? currentPeriod.name : '';
+    
+    document.getElementById('weekTitle').textContent = currentWeekOffset === 0 
+        ? `Текущая неделя (${periodName})` 
+        : title;
 }
 
 function updateWeekButtons() {
