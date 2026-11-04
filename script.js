@@ -270,24 +270,16 @@ function renderCalendar() {
         }
         
         if (lessonDates[dateStr]) {
-            div.classList.add('has-lessons');
-            
             const firstLesson = lessonDates[dateStr][0];
             
-            // Определяем формат
-            let format = null;
-            if (firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'))) {
-                format = 'ДСР';
-            } else if (firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'))) {
-                format = 'СДО';
-            }
+            // Определяем формат и добавляем класс для цвета
+            const isDSR = firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'));
+            const isSDO = firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'));
             
-            // Цветной бейдж формата (ДСР/СДО) в углу ячейки
-            if (format) {
-                const badge = document.createElement('div');
-                badge.className = `cal-format-badge ${format.toLowerCase()}`;
-                badge.textContent = format;
-                div.appendChild(badge);
+            if (isDSR) {
+                div.classList.add('dsr-day');
+            } else if (isSDO) {
+                div.classList.add('sdo-day');
             }
             
             // Информация о занятии
