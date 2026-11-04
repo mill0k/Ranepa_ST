@@ -8,31 +8,59 @@
 </head>
 <body>
     <header>
-        <h1>📚 ЭБ-5-23-01/02</h1>
-        <div class="controls">
-            <button id="toggleMode" class="btn active">Расписание</button>
-            <button id="calendarBtn" class="btn">Календарь</button>
+        <div class="header-top">
+            <h1>📚 ЭБ-5-23-01/02</h1>
+            <div class="mode-switch">
+                <button id="modeSchedule" class="mode-btn active">Расписание</button>
+                <button id="modeSession" class="mode-btn">Сессия</button>
+            </div>
+        </div>
+        
+        <!-- Навигация для списка (недели) -->
+        <div id="weekNav" class="nav-bar">
+            <button id="prevWeek" class="nav-btn">‹</button>
+            <span id="weekTitle" class="nav-title">Текущая неделя</span>
+            <button id="nextWeek" class="nav-btn">›</button>
+            <button id="todayWeek" class="today-btn">Сегодня</button>
+        </div>
+        
+        <!-- Навигация для календаря (месяцы) -->
+        <div id="monthNav" class="nav-bar hidden">
+            <button id="prevMonth" class="nav-btn">‹</button>
+            <span id="monthTitle" class="nav-title">Ноябрь 2026</span>
+            <button id="nextMonth" class="nav-btn">›</button>
+            <button id="todayMonth" class="today-btn">Сегодня</button>
         </div>
     </header>
 
     <main>
         <div id="scheduleView">
-            <h2 id="currentWeekTitle">Текущая неделя</h2>
             <div id="scheduleList" class="schedule-list"></div>
         </div>
 
         <div id="calendarView" class="hidden">
-            <h2 id="calendarMonthTitle">Месяц</h2>
+            <div class="calendar-weekdays">
+                <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="weekend">Сб</div><div class="weekend">Вс</div>
+            </div>
             <div id="calendarGrid" class="calendar-grid"></div>
         </div>
     </main>
 
-    <footer id="changelogFooter" class="hidden">
+    <!-- Круглые кнопки внизу -->
+    <div class="fab-container">
+        <button id="toggleView" class="fab fab-main">
+            <span id="fabIcon">📅</span>
+        </button>
+    </div>
+
+    <!-- Уведомление об изменениях -->
+    <div id="changelogBanner" class="changelog-banner hidden">
         <div class="changelog-content">
             <strong>🔄 Обновлено:</strong> <span id="updateDate"></span>
             <ul id="updateChanges"></ul>
         </div>
-    </footer>
+        <button id="closeChangelog" class="close-btn">✕</button>
+    </div>
 
     <script src="script.js"></script>
 </body>
