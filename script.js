@@ -271,27 +271,32 @@ function renderCalendar() {
         
         if (lessonDates[dateStr]) {
             div.classList.add('has-lessons');
-            const hasDSR = lessonDates[dateStr].some(l => l.type === 'ДСР');
-            const hasSDO = lessonDates[dateStr].some(l => l.type === 'СДО' || (l.room && l.room.includes('СДО')));
-            if (hasDSR) div.classList.add('dsr-day');
-            if (hasSDO) div.classList.add('sdo-day');
             
             const firstLesson = lessonDates[dateStr][0];
             
-            const lessonInfo = document.createElement('div');
-            lessonInfo.className = 'cal-lesson-info';
-            
-            let format = 'Очно';
+            // Определяем формат
+            let format = null;
             if (firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'))) {
                 format = 'ДСР';
             } else if (firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'))) {
                 format = 'СДО';
             }
             
+            // Цветной бейдж формата (ДСР/СДО) в углу ячейки
+            if (format) {
+                const badge = document.createElement('div');
+                badge.className = `cal-format-badge ${format.toLowerCase()}`;
+                badge.textContent = format;
+                div.appendChild(badge);
+            }
+            
+            // Информация о занятии
+            const lessonInfo = document.createElement('div');
+            lessonInfo.className = 'cal-lesson-info';
             lessonInfo.innerHTML = `
                 <div class="cal-time">${firstLesson.time || ''}</div>
+                <div class="cal-subject">${firstLesson.subject || ''}</div>
                 <div class="cal-type">${firstLesson.type || ''}</div>
-                <div class="cal-format">${format}</div>
                 <div class="cal-room">🚪 ${firstLesson.room || ''}</div>
             `;
             div.appendChild(lessonInfo);
