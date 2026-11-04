@@ -14,20 +14,17 @@ let sessionMaxDate = null;
 
 // Структура учебного года (даты начала и конца периодов)
 const academicYear = {
-    // 4 курс
     semester1_4: { start: '2026-09-01', end: '2026-12-31', name: '1 семестр 4 курса' },
     session1_4: { start: '2027-01-01', end: '2027-02-28', name: 'Сессия 1 семестра 4 курса' },
     semester2_4: { start: '2027-02-01', end: '2027-05-31', name: '2 семестр 4 курса' },
     session2_4: { start: '2027-06-01', end: '2027-07-31', name: 'Сессия 2 семестра 4 курса' },
     
-    // 5 курс
     semester1_5: { start: '2027-09-01', end: '2027-12-31', name: '1 семестр 5 курса' },
     session1_5: { start: '2028-01-01', end: '2028-02-28', name: 'Сессия 1 семестра 5 курса' },
     semester2_5: { start: '2028-02-01', end: '2028-05-31', name: '2 семестр 5 курса' },
     session2_5: { start: '2028-06-01', end: '2028-07-31', name: 'Сессия 2 семестра 5 курса' }
 };
 
-// Определяем текущий период на основе даты
 function getCurrentPeriod(date = new Date()) {
     const dateStr = date.toISOString().split('T')[0];
     
@@ -38,11 +35,9 @@ function getCurrentPeriod(date = new Date()) {
         }
     }
     
-    // Если не попали ни в один период, возвращаем ближайший
     return null;
 }
 
-// Определяем, является ли период сессией
 function isSessionPeriod(periodKey) {
     return periodKey && periodKey.includes('session');
 }
@@ -75,7 +70,6 @@ async function loadData() {
             document.getElementById('changelogFooter').classList.remove('hidden');
         }
         
-        // Автоматически определяем режим на основе текущей даты
         const currentPeriod = getCurrentPeriod();
         if (currentPeriod && isSessionPeriod(currentPeriod.key)) {
             currentMode = 'session';
@@ -99,28 +93,21 @@ function getDateFromDayMonth(d, m) {
     let year = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // Логика определения года на основе периода
     const currentPeriod = getCurrentPeriod();
     
     if (currentPeriod) {
-        // Если мы в сессии (декабрь-февраль или июнь-июль)
         if (isSessionPeriod(currentPeriod.key)) {
             if (m >= 11 || m <= 2) {
-                // Ноябрь-февраль - это сессия текущего учебного года
-                if (m <= 2) year++; // Январь-февраль следующего года
+                if (m <= 2) year++;
             }
         } else {
-            // Если мы в семестре
             if (m >= 9 && m <= 12 && currentMonth >= 1 && currentMonth <= 7) {
-                // Сентябрь-декабрь, но сейчас январь-июль - значит это прошлый год
                 year--;
             } else if (m >= 1 && m <= 7 && currentMonth >= 9 && currentMonth <= 12) {
-                // Январь-июль, но сейчас сентябрь-декабрь - значит это следующий год
                 year++;
             }
         }
     } else {
-        // Стандартная логика если период не определен
         if (m <= 2 && currentMonth >= 10) {
             year++;
         } else if (m >= 11 && currentMonth <= 2) {
@@ -290,8 +277,19 @@ function renderCalendar() {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + currentMonthOffset;
     
-    const minMonthOffset = -1;
-    const maxMonthOffset = 1;
+    // Ограничения по реальным датам расписания/сессии
+    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
+    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
+    
+    let minMonthOffset = -12;
+    let maxMonthOffset = 12;
+    
+    if (minDate) {
+        minMonthOffset = (minDate.getFullYear() - today.getFullYear()) * 12 + (minDate.getMonth() - today.getMonth());
+    }
+    if (maxDate) {
+        maxMonthOffset = (maxDate.getFullYear() - today.getFullYear()) * 12 + (maxDate.getMonth() - today.getMonth());
+    }
     
     document.getElementById('prevMonth').disabled = currentMonthOffset <= minMonthOffset;
     document.getElementById('nextMonth').disabled = currentMonthOffset >= maxMonthOffset;
