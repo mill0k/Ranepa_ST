@@ -310,7 +310,7 @@ body {
     visibility: visible;
 }
 
-/* Календарь (увеличенный) */
+/* Календарь (увеличенный, одинаковый цвет ячеек) */
 .calendar-container {
     flex: 1;
     overflow-y: auto;
@@ -347,13 +347,13 @@ body {
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 5px;
 }
 
 .cal-day-header {
     text-align: center;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     padding: 6px 0;
 }
@@ -362,46 +362,39 @@ body {
     color: #f44336;
 }
 
+/* Все ячейки одного цвета */
 .cal-day {
     aspect-ratio: 1;
     background: var(--card-bg);
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     cursor: pointer;
     border: 1px solid var(--light-gray);
-    min-height: 80px;
-    padding: 4px;
+    min-height: 100px;
+    padding: 5px;
     position: relative;
     overflow: hidden;
 }
 
+/* Выходные - красная рамка */
 .cal-day.weekend {
-    background: var(--weekend-bg);
+    border-color: #f44336;
+    border-width: 2px;
 }
 
+/* Сегодня - жирная рамка */
 .cal-day.today {
-    border: 2px solid var(--today-border);
+    border: 3px solid var(--today-border);
     font-weight: 700;
 }
 
-.cal-day.has-lessons {
-    background: #e8e8e8;
-}
-
-.cal-day.dsr-day {
-    background: #fff3e0;
-}
-
-.cal-day.sdo-day {
-    background: #e3f2fd;
-}
-
+/* Прошедшие дни - перечёркнуты */
 .cal-day.past {
-    opacity: 0.5;
+    opacity: 0.45;
 }
 
 .cal-day.past::after {
@@ -412,22 +405,57 @@ body {
     right: 10%;
     height: 2px;
     background: #999;
-    transform: rotate(-45deg);
+    transform: rotate(-35deg);
+    pointer-events: none;
 }
 
+/* Метки ДСР и СДО (цветные бейджи) */
+.cal-format-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+}
+
+.cal-format-badge.dsr {
+    background: var(--dsr-color);
+}
+
+.cal-format-badge.sdo {
+    background: var(--sdo-color);
+}
+
+/* Информация о занятии внутри ячейки */
 .cal-lesson-info {
     width: 100%;
-    margin-top: 2px;
-    font-size: 0.65rem;
-    line-height: 1.2;
+    margin-top: 4px;
+    font-size: 0.7rem;
+    line-height: 1.25;
     text-align: center;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .cal-time {
     font-weight: 700;
     color: var(--secondary-gray);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
+}
+
+.cal-subject {
+    font-weight: 600;
+    font-size: 0.6rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .cal-type {
@@ -436,13 +464,8 @@ body {
     color: var(--primary-gray);
 }
 
-.cal-format {
-    font-size: 0.55rem;
-    color: var(--text-secondary);
-}
-
 .cal-room {
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     color: var(--text-secondary);
     font-weight: 500;
 }
@@ -583,7 +606,7 @@ body {
     }
     
     .cal-day {
-        min-height: 70px;
+        min-height: 85px;
     }
     
     .cal-lesson-info {
@@ -594,11 +617,11 @@ body {
         font-size: 0.6rem;
     }
     
-    .cal-type {
+    .cal-subject, .cal-type, .cal-room {
         font-size: 0.55rem;
     }
     
-    .cal-format, .cal-room {
+    .cal-format-badge {
         font-size: 0.5rem;
     }
     
