@@ -42,7 +42,6 @@ function isSessionPeriod(periodKey) {
     return periodKey && periodKey.includes('session');
 }
 
-// Получить смещение месяца для календаря на основе периода
 function getMonthOffsetForPeriod(period) {
     if (!period) return 0;
     
@@ -61,14 +60,39 @@ async function loadData() {
             fetch(`data/changelog.json?t=${t}`)
         ]);
         
-        if (scheduleRes.ok) scheduleData = await scheduleRes.json();
-        if (sessionRes.ok) sessionData = await sessionRes.json();
+        if (scheduleRes.ok) {
+            scheduleData = await scheduleRes.json();
+            localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+        } else if (localStorage.getItem('scheduleData')) {
+            scheduleData = JSON.parse(localStorage.getItem('scheduleData'));
+            console.log('Использованы данные из кэша (нет интернета)');
+        }
+        
+        if (sessionRes.ok) {
+            sessionData = await sessionRes.json();
+            localStorage.setItem('sessionData', JSON.stringify(sessionData));
+        } else if (localStorage.getItem('sessionData')) {
+            sessionData = JSON.parse(localStorage.getItem('sessionData'));
+            console.log('Использованы данные сессии из кэша (нет интернета)');
+        }
         
         computeDateBounds(scheduleData, 'schedule');
         computeDateBounds(sessionData, 'session');
         
         if (changelogRes.ok) {
             changelogData = await changelogRes.json();
+            localStorage.setItem('changelogData', JSON.stringify(changelogData));
+            document.getElementById('updateDate').textContent = changelogData.date;
+            const changesList = document.getElementById('updateChanges');
+            changesList.innerHTML = '';
+            changelogData.changes.forEach(change => {
+                const li = document.createElement('li');
+                li.textContent = change;
+                changesList.appendChild(li);
+            });
+            document.getElementById('changelogFooter').classList.remove('hidden');
+        } else if (localStorage.getItem('changelogData')) {
+            changelogData = JSON.parse(localStorage.getItem('changelogData'));
             document.getElementById('updateDate').textContent = changelogData.date;
             const changesList = document.getElementById('updateChanges');
             changesList.innerHTML = '';
@@ -80,7 +104,6 @@ async function loadData() {
             document.getElementById('changelogFooter').classList.remove('hidden');
         }
         
-        // Автоматически определяем режим и смещение календаря
         const currentPeriod = getCurrentPeriod();
         if (currentPeriod && isSessionPeriod(currentPeriod.key)) {
             currentMode = 'session';
@@ -97,7 +120,37 @@ async function loadData() {
         render();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #757575; padding: 20px;">Не удалось загрузить расписание</p>';
+        
+        // Пробуем загрузить из кэша
+        if (localStorage.getItem('scheduleData')) {
+            scheduleData = JSON.parse(localStorage.getItem('scheduleData'));
+        }
+        if (localStorage.getItem('sessionData')) {
+            sessionData = JSON.parse(localStorage.getItem('sessionData'));
+        }
+        if (localStorage.getItem('changelogData')) {
+            changelogData = JSON.parse(localStorage.getItem('changelogData'));
+        }
+        
+        computeDateBounds(scheduleData, 'schedule');
+        computeDateBounds(sessionData, 'session');
+        
+        const currentPeriod = getCurrentPeriod();
+        if (currentPeriod && isSessionPeriod(currentPeriod.key)) {
+            currentMode = 'session';
+            currentMonthOffset = getMonthOffsetForPeriod(currentPeriod);
+            if (sessionMinDate) {
+                currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
+            }
+        } else {
+            currentMode = 'schedule';
+            currentMonthOffset = 0;
+            currentWeekOffset = 0;
+        }
+        
+        render();
+        
+        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #757575; padding: 20px;">⚠️ Нет подключения к интернету. Показаны сохранённые данные.</p>';
     }
 }
 
@@ -288,12 +341,10 @@ function renderCalendar() {
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const today = new Date();
     
-    // Правильный расчет года и месяца с учетом смещения
     const targetDate = new Date(today.getFullYear(), today.getMonth() + currentMonthOffset, 1);
     const currentYear = targetDate.getFullYear();
     const currentMonth = targetDate.getMonth();
     
-    // Ограничения по реальным датам
     const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
     const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
     
@@ -333,10 +384,24 @@ function renderCalendar() {
         container.appendChild(div);
     }
     
+    // Собираем данные для отображения в календаре
     const lessonDates = {};
     filteredData.forEach(l => {
-        if (!lessonDates[l.date]) lessonDates[l.date] = [];
-        lessonDates[l.date].push(l);
+        if (!l.date || !l.month) return;
+        const d = parseInt(l.date);
+        const m = parseInt(l.month);
+        
+        // Вычисляем правильный год для этой даты
+        const lessonDate = getDateFromDayMonth(d, m);
+        const lessonYear = lessonDate.getFullYear();
+        const lessonMonth = lessonDate.getMonth();
+        
+        // Показываем только занятия для текущего отображаемого месяца
+        if (lessonYear === currentYear && lessonMonth === currentMonth) {
+            const dateKey = String(d).padStart(2, '0');
+            if (!lessonDates[dateKey]) lessonDates[dateKey] = [];
+            lessonDates[dateKey].push(l);
+        }
     });
     
     for (let d = 1; d <= daysInMonth; d++) {
@@ -344,9 +409,6 @@ function renderCalendar() {
         div.className = 'cal-day';
         
         const dateStr = String(d).padStart(2, '0');
-        const monthStr = String(currentMonth + 1).padStart(2, '0');
-        const dateKey = `${dateStr}.${monthStr}`;
-        
         const currentDayDate = new Date(currentYear, currentMonth, d);
         const dayOfWeek = currentDayDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -366,8 +428,8 @@ function renderCalendar() {
             div.classList.add('today');
         }
         
-        if (!isSunday && lessonDates[dateKey]) {
-            const firstLesson = lessonDates[dateKey][0];
+        if (!isSunday && lessonDates[dateStr]) {
+            const firstLesson = lessonDates[dateStr][0];
             
             const isDSR = firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'));
             const isSDO = firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'));
@@ -557,12 +619,10 @@ document.getElementById('scheduleBtn').addEventListener('click', () => {
     closeAllPanels();
     if (currentMode === 'schedule') {
         currentMode = 'session';
-        // При переключении на сессию - перейти к месяцу сессии
         const sessionPeriod = getCurrentPeriod();
         if (sessionPeriod && isSessionPeriod(sessionPeriod.key)) {
             currentMonthOffset = getMonthOffsetForPeriod(sessionPeriod);
         } else {
-            // Если сейчас не период сессии, показать январь следующего года
             const today = new Date();
             currentMonthOffset = (today.getFullYear() + 1 - today.getFullYear()) * 12 + (0 - today.getMonth());
         }
