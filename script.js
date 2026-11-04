@@ -1,9 +1,10 @@
-let currentMode = 'schedule'; // 'schedule' или 'session'
-let currentView = 'list';     // 'list' или 'calendar'
+let currentMode = 'schedule';
+let currentView = 'list';
 let scheduleData = [];
 let sessionData = [];
 let currentWeekOffset = 0;
 let currentMonthOffset = 0;
+let selectedGroup = 'all';
 
 async function loadData() {
     try {
@@ -33,7 +34,7 @@ async function loadData() {
         render();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #757575;">Не удалось загрузить расписание</p>';
+        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #757575; padding: 20px;">Не удалось загрузить расписание</p>';
     }
 }
 
@@ -52,12 +53,22 @@ function render() {
     updateWeekTitle();
 }
 
+function filterByGroup(data) {
+    if (selectedGroup === 'all') return data;
+    return data.filter(lesson => {
+        if (!lesson.group) return false;
+        return lesson.group.includes(selectedGroup);
+    });
+}
+
 function renderScheduleList(data) {
     const container = document.getElementById('scheduleList');
     container.innerHTML = '';
     
+    const filteredData = filterByGroup(data);
+    
     const grouped = {};
-    data.forEach(lesson => {
+    filteredData.forEach(lesson => {
         if (!lesson.date) return;
         const dateKey = `${lesson.date}.${lesson.month}`;
         if (!grouped[dateKey]) {
@@ -88,6 +99,11 @@ function renderScheduleList(data) {
     
     const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
     
+    if (datesToShow.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color: #757575; padding: 40px 20px;">На этой неделе нет занятий</p>';
+        return;
+    }
+    
     datesToShow.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
@@ -116,8 +132,8 @@ function renderScheduleList(data) {
             const lessonDiv = document.createElement('div');
             lessonDiv.className = 'lesson';
             
-            const isDSR = lesson.type === 'ДСР' || lesson.subject.includes('самостоятельной');
-            const isSDO = lesson.type === 'СДО' || lesson.room === 'СДО РАНХиГС';
+            const isDSR = lesson.type === 'ДСР' || (lesson.subject && lesson.subject.includes('самостоятельной'));
+            const isSDO = lesson.type === 'СДО' || (lesson.room && lesson.room.includes('СДО'));
             
             if (isDSR) lessonDiv.classList.add('dsr');
             if (isSDO) lessonDiv.classList.add('sdo');
@@ -126,17 +142,16 @@ function renderScheduleList(data) {
             if (isDSR) badge = '<span class="badge dsr">ДСР</span>';
             if (isSDO) badge = '<span class="badge sdo">СДО</span>';
             
-            // Разделяем группы
-            let groups = lesson.group;
+            let groups = lesson.group || '';
             if (groups.includes('/')) {
-                groups = groups.split('/').join(', ');
+                groups = groups.split('/').map(g => g.trim()).join(', ');
             }
             
             lessonDiv.innerHTML = `
                 <div class="lesson-time">${lesson.time || '—'}</div>
                 <div class="lesson-details">
-                    <div class="lesson-subject">${lesson.subject} ${badge}</div>
-                    <div class="lesson-type">${lesson.type} | ${groups}</div>
+                    <div class="lesson-subject">${lesson.subject || ''} ${badge}</div>
+                    <div class="lesson-type">${lesson.type || ''} | ${groups}</div>
                     <div class="lesson-teacher">👤 ${lesson.teacher || 'Не указан'}</div>
                     <div class="lesson-room">🚪 ${lesson.room || 'Не указана'}</div>
                 </div>
@@ -150,6 +165,8 @@ function renderScheduleList(data) {
 function renderCalendar(data) {
     const container = document.getElementById('calendarGrid');
     container.innerHTML = '';
+    
+    const filteredData = filterByGroup(data);
     
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const today = new Date();
@@ -180,7 +197,7 @@ function renderCalendar(data) {
     }
     
     const lessonDates = {};
-    data.forEach(l => {
+    filteredData.forEach(l => {
         if (!lessonDates[l.date]) lessonDates[l.date] = [];
         lessonDates[l.date].push(l);
     });
@@ -204,19 +221,18 @@ function renderCalendar(data) {
             const hasDSR = lessonDates[dateStr].some(l => l.type === 'ДСР');
             if (hasDSR) div.classList.add('dsr-day');
             
-            // Показываем первую пару в календаре
             const firstLesson = lessonDates[dateStr][0];
-            let groups = firstLesson.group;
+            let groups = firstLesson.group || '';
             if (groups.includes('/')) {
-                groups = groups.split('/').join(', ');
+                groups = groups.split('/').map(g => g.trim()).join(', ');
             }
             
             const lessonInfo = document.createElement('div');
             lessonInfo.className = 'cal-lesson-info';
             lessonInfo.innerHTML = `
                 <div class="cal-time">${firstLesson.time || ''}</div>
-                <div class="cal-subject">${firstLesson.subject}</div>
-                <div class="cal-type">${firstLesson.type}</div>
+                <div class="cal-subject">${firstLesson.subject || ''}</div>
+                <div class="cal-type">${firstLesson.type || ''}</div>
                 <div class="cal-room">${firstLesson.room || ''}</div>
             `;
             div.appendChild(lessonInfo);
@@ -239,24 +255,18 @@ function updateWeekTitle() {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
-    const title = `${weekStart.getDate()}.${weekStart.getMonth()+1} - ${weekEnd.getDate()}.${weekEnd.getMonth()+1}`;
+    const title = `${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} - ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}`;
     document.getElementById('weekTitle').textContent = currentWeekOffset === 0 ? 'Текущая неделя' : title;
-    
-    document.getElementById('prevWeek').disabled = currentWeekOffset <= -4;
-    document.getElementById('nextWeek').disabled = currentWeekOffset >= 4;
 }
 
 function updateNavButtons() {
-    const calendarBtn = document.getElementById('calendarBtn');
+    document.getElementById('scheduleBtn').classList.toggle('active', currentView === 'list');
+    document.getElementById('calendarBtn').classList.toggle('active', currentView === 'calendar');
+    
     const scheduleBtn = document.getElementById('scheduleBtn');
-    
-    calendarBtn.classList.toggle('active', currentView === 'calendar');
-    scheduleBtn.classList.toggle('active', currentView === 'list');
-    
-    if (currentView === 'list') {
-        scheduleBtn.textContent = currentMode === 'schedule' ? '📅 Расписание' : '🎓 Сессия';
-    } else {
-        scheduleBtn.textContent = '📅 Расписание';
+    const label = scheduleBtn.querySelector('.nav-label');
+    if (label) {
+        label.textContent = currentMode === 'schedule' ? 'Расписание' : 'Сессия';
     }
 }
 
@@ -268,6 +278,11 @@ document.getElementById('prevWeek').addEventListener('click', () => {
 
 document.getElementById('nextWeek').addEventListener('click', () => {
     currentWeekOffset++;
+    render();
+});
+
+document.getElementById('todayBtn').addEventListener('click', () => {
+    currentWeekOffset = 0;
     render();
 });
 
@@ -294,6 +309,11 @@ document.getElementById('scheduleBtn').addEventListener('click', () => {
 document.getElementById('calendarBtn').addEventListener('click', () => {
     currentView = 'calendar';
     updateNavButtons();
+    render();
+});
+
+document.getElementById('groupSelect').addEventListener('change', (e) => {
+    selectedGroup = e.target.value;
     render();
 });
 
