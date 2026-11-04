@@ -11,7 +11,6 @@
     <div class="header-nav">
         <div class="week-nav">
             <button id="prevWeek" class="arrow-btn">‹</button>
-            <button id="todayBtn" class="today-btn">Сегодня</button>
             <h1 class="current-week-title" id="weekTitle">Текущая неделя</h1>
             <button id="nextWeek" class="arrow-btn">›</button>
         </div>
@@ -22,6 +21,7 @@
                 <option value="ЭБ-5-23-02">ЭБ-5-23-02</option>
             </select>
         </div>
+        <button id="todayBtn" class="today-week-btn">↻ Текущая неделя</button>
     </div>
 
     <main>
@@ -58,6 +58,27 @@
             <span class="nav-icon">📆</span>
             <span class="nav-label">Календарь</span>
         </button>
+        <button id="updatesBtn" class="nav-btn">
+            <span class="nav-icon">🔄</span>
+            <span class="nav-label">Обновления</span>
+        </button>
+    </div>
+
+    <!-- Панель обновлений -->
+    <div id="updatesPanel" class="updates-panel hidden">
+        <div class="updates-header">
+            <h3>🔄 История обновлений</h3>
+            <button id="closeUpdates" class="close-btn">✕</button>
+        </div>
+        <div class="updates-content">
+            <div class="last-update">
+                <strong>Последнее обновление:</strong>
+                <span id="lastUpdateDate">—</span>
+            </div>
+            <div class="changes-list" id="changesList">
+                <p style="color: #757575;">Нет данных об изменениях</p>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
