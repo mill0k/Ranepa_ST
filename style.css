@@ -310,7 +310,7 @@ body {
     visibility: visible;
 }
 
-/* Календарь (исправлено наложение, разные цвета) */
+/* Календарь (исправлено наложение) */
 .calendar-container {
     flex: 1;
     overflow-y: auto;
@@ -347,13 +347,13 @@ body {
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
+    gap: 4px;
 }
 
 .cal-day-header {
     text-align: center;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     padding: 6px 0;
 }
@@ -362,19 +362,19 @@ body {
     color: #f44336;
 }
 
-/* Базовая ячейка - фиксированная высота, без aspect-ratio */
+/* Ячейки календаря - без наложения */
 .cal-day {
     background: var(--card-bg);
-    border-radius: 8px;
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     cursor: pointer;
     border: 1px solid var(--light-gray);
-    height: 100px;
-    padding: 5px;
+    min-height: 70px;
+    padding: 3px;
     position: relative;
     overflow: hidden;
 }
@@ -396,7 +396,7 @@ body {
 
 /* Сегодня - жирная рамка */
 .cal-day.today {
-    border: 3px solid var(--today-border);
+    border: 2px solid var(--today-border);
     font-weight: 700;
 }
 
@@ -420,25 +420,25 @@ body {
 /* Информация о занятии внутри ячейки */
 .cal-lesson-info {
     width: 100%;
-    margin-top: 4px;
-    font-size: 0.7rem;
-    line-height: 1.25;
+    margin-top: 2px;
+    font-size: 0.55rem;
+    line-height: 1.1;
     text-align: center;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 }
 
 .cal-time {
     font-weight: 700;
     color: var(--secondary-gray);
-    font-size: 0.7rem;
+    font-size: 0.55rem;
 }
 
 .cal-subject {
     font-weight: 600;
-    font-size: 0.6rem;
+    font-size: 0.5rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -447,12 +447,12 @@ body {
 
 .cal-type {
     font-weight: 600;
-    font-size: 0.6rem;
+    font-size: 0.5rem;
     color: var(--primary-gray);
 }
 
 .cal-room {
-    font-size: 0.6rem;
+    font-size: 0.5rem;
     color: var(--text-secondary);
     font-weight: 500;
 }
@@ -593,19 +593,19 @@ body {
     }
     
     .cal-day {
-        height: 85px;
+        min-height: 60px;
     }
     
     .cal-lesson-info {
-        font-size: 0.6rem;
+        font-size: 0.5rem;
     }
     
     .cal-time {
-        font-size: 0.6rem;
+        font-size: 0.5rem;
     }
     
     .cal-subject, .cal-type, .cal-room {
-        font-size: 0.55rem;
+        font-size: 0.45rem;
     }
     
     .nav-btn {
