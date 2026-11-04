@@ -28,17 +28,6 @@
         <div id="scheduleView">
             <div id="scheduleList" class="schedule-list"></div>
         </div>
-
-        <div id="calendarView" class="hidden">
-            <div class="calendar-container">
-                <div class="calendar-header">
-                    <button id="prevMonth" class="nav-arrow">‹</button>
-                    <h2 id="calendarMonthTitle">Месяц</h2>
-                    <button id="nextMonth" class="nav-arrow">›</button>
-                </div>
-                <div id="calendarGrid" class="calendar-grid"></div>
-            </div>
-        </div>
     </main>
 
     <footer id="changelogFooter" class="hidden">
@@ -54,6 +43,10 @@
             <span class="nav-icon">📅</span>
             <span class="nav-label">Расписание</span>
         </button>
+        <button id="sessionBtn" class="nav-btn">
+            <span class="nav-icon">🎓</span>
+            <span class="nav-label">Сессия</span>
+        </button>
         <button id="calendarBtn" class="nav-btn">
             <span class="nav-icon">📆</span>
             <span class="nav-label">Календарь</span>
@@ -64,21 +57,66 @@
         </button>
     </div>
 
-    <!-- Кнопка Google Calendar -->
-    <div class="google-calendar-btn">
+    <!-- Кнопка Google Calendar внизу страницы -->
+    <div class="google-calendar-section">
         <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Расписание+ЭБ-5-23&dates=20260101T080000/20260101T180000&details=Расписание+занятий+группы+ЭБ-5-23-01/02" target="_blank" class="gcal-link">
             <span class="gcal-icon">📅</span>
             <span class="gcal-text">Добавить в Google Календарь</span>
         </a>
     </div>
 
-    <!-- Панель обновлений -->
-    <div id="updatesPanel" class="updates-panel hidden">
-        <div class="updates-header">
-            <h3>🔄 История обновлений</h3>
-            <button id="closeUpdates" class="close-btn">✕</button>
+    <!-- Панель расписания -->
+    <div id="schedulePanel" class="side-panel hidden">
+        <div class="panel-header">
+            <h3>📅 Расписание</h3>
+            <button class="close-panel-btn" data-panel="schedulePanel">✕</button>
         </div>
-        <div class="updates-content">
+        <div class="panel-content">
+            <div id="schedulePanelList" class="schedule-list"></div>
+        </div>
+    </div>
+
+    <!-- Панель сессии -->
+    <div id="sessionPanel" class="side-panel hidden">
+        <div class="panel-header">
+            <h3>🎓 Сессия</h3>
+            <button class="close-panel-btn" data-panel="sessionPanel">✕</button>
+        </div>
+        <div class="panel-content">
+            <div class="panel-week-nav">
+                <button id="prevSessionWeek" class="arrow-btn">‹</button>
+                <span id="sessionWeekTitle" class="panel-week-title">Текущая неделя</span>
+                <button id="nextSessionWeek" class="arrow-btn">›</button>
+            </div>
+            <div id="sessionPanelList" class="schedule-list"></div>
+        </div>
+    </div>
+
+    <!-- Панель календаря -->
+    <div id="calendarPanel" class="side-panel hidden">
+        <div class="panel-header">
+            <h3>📆 Календарь</h3>
+            <button class="close-panel-btn" data-panel="calendarPanel">✕</button>
+        </div>
+        <div class="panel-content">
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button id="prevMonth" class="nav-arrow">‹</button>
+                    <h2 id="calendarMonthTitle">Месяц</h2>
+                    <button id="nextMonth" class="nav-arrow">›</button>
+                </div>
+                <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель обновлений -->
+    <div id="updatesPanel" class="side-panel hidden">
+        <div class="panel-header">
+            <h3>🔄 История обновлений</h3>
+            <button class="close-panel-btn" data-panel="updatesPanel">✕</button>
+        </div>
+        <div class="panel-content">
             <div class="last-update">
                 <strong>Последнее обновление:</strong>
                 <span id="lastUpdateDate">—</span>
