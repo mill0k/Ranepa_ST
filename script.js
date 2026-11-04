@@ -12,7 +12,7 @@ let scheduleMaxDate = null;
 let sessionMinDate = null;
 let sessionMaxDate = null;
 
-// Структура учебного года (даты начала и конца периодов)
+// Структура учебного года
 const academicYear = {
     semester1_4: { start: '2026-09-01', end: '2026-12-31', name: '1 семестр 4 курса' },
     session1_4: { start: '2027-01-01', end: '2027-02-28', name: 'Сессия 1 семестра 4 курса' },
@@ -40,6 +40,16 @@ function getCurrentPeriod(date = new Date()) {
 
 function isSessionPeriod(periodKey) {
     return periodKey && periodKey.includes('session');
+}
+
+// Получить смещение месяца для календаря на основе периода
+function getMonthOffsetForPeriod(period) {
+    if (!period) return 0;
+    
+    const startDate = new Date(period.start);
+    const today = new Date();
+    
+    return (startDate.getFullYear() - today.getFullYear()) * 12 + (startDate.getMonth() - today.getMonth());
 }
 
 async function loadData() {
@@ -70,14 +80,17 @@ async function loadData() {
             document.getElementById('changelogFooter').classList.remove('hidden');
         }
         
+        // Автоматически определяем режим и смещение календаря
         const currentPeriod = getCurrentPeriod();
         if (currentPeriod && isSessionPeriod(currentPeriod.key)) {
             currentMode = 'session';
+            currentMonthOffset = getMonthOffsetForPeriod(currentPeriod);
             if (sessionMinDate) {
                 currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
             }
         } else {
             currentMode = 'schedule';
+            currentMonthOffset = 0;
             currentWeekOffset = 0;
         }
         
@@ -274,10 +287,13 @@ function renderCalendar() {
     
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + currentMonthOffset;
     
-    // Ограничения по реальным датам расписания/сессии
+    // Правильный расчет года и месяца с учетом смещения
+    const targetDate = new Date(today.getFullYear(), today.getMonth() + currentMonthOffset, 1);
+    const currentYear = targetDate.getFullYear();
+    const currentMonth = targetDate.getMonth();
+    
+    // Ограничения по реальным датам
     const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
     const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
     
@@ -294,7 +310,7 @@ function renderCalendar() {
     document.getElementById('prevMonth').disabled = currentMonthOffset <= minMonthOffset;
     document.getElementById('nextMonth').disabled = currentMonthOffset >= maxMonthOffset;
     
-    document.getElementById('calendarMonthTitle').textContent = `${monthNames[currentMonth % 12]} ${currentYear}`;
+    document.getElementById('calendarMonthTitle').textContent = `${monthNames[currentMonth]} ${currentYear}`;
     
     const dayHeaders = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     dayHeaders.forEach(day => {
@@ -304,14 +320,11 @@ function renderCalendar() {
         container.appendChild(div);
     });
     
-    const year = currentYear;
-    const month = currentMonth % 12;
-    
-    const firstDayOfMonth = new Date(year, month, 1);
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
     const firstDayOfWeek = firstDayOfMonth.getDay();
     const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
     
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
     for (let i = 0; i < startOffset; i++) {
         const div = document.createElement('div');
@@ -331,7 +344,10 @@ function renderCalendar() {
         div.className = 'cal-day';
         
         const dateStr = String(d).padStart(2, '0');
-        const currentDayDate = new Date(year, month, d);
+        const monthStr = String(currentMonth + 1).padStart(2, '0');
+        const dateKey = `${dateStr}.${monthStr}`;
+        
+        const currentDayDate = new Date(currentYear, currentMonth, d);
         const dayOfWeek = currentDayDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         const isSunday = dayOfWeek === 0;
@@ -346,12 +362,12 @@ function renderCalendar() {
         
         if (isWeekend) div.classList.add('weekend');
         if (isPast) div.classList.add('past');
-        if (d === today.getDate() && (currentMonth % 12) === today.getMonth() && currentMonthOffset === 0) {
+        if (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
             div.classList.add('today');
         }
         
-        if (!isSunday && lessonDates[dateStr]) {
-            const firstLesson = lessonDates[dateStr][0];
+        if (!isSunday && lessonDates[dateKey]) {
+            const firstLesson = lessonDates[dateKey][0];
             
             const isDSR = firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'));
             const isSDO = firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'));
@@ -541,6 +557,15 @@ document.getElementById('scheduleBtn').addEventListener('click', () => {
     closeAllPanels();
     if (currentMode === 'schedule') {
         currentMode = 'session';
+        // При переключении на сессию - перейти к месяцу сессии
+        const sessionPeriod = getCurrentPeriod();
+        if (sessionPeriod && isSessionPeriod(sessionPeriod.key)) {
+            currentMonthOffset = getMonthOffsetForPeriod(sessionPeriod);
+        } else {
+            // Если сейчас не период сессии, показать январь следующего года
+            const today = new Date();
+            currentMonthOffset = (today.getFullYear() + 1 - today.getFullYear()) * 12 + (0 - today.getMonth());
+        }
         if (sessionMinDate) {
             currentWeekOffset = getWeekOffsetForDate(sessionMinDate);
         } else {
@@ -548,6 +573,7 @@ document.getElementById('scheduleBtn').addEventListener('click', () => {
         }
     } else {
         currentMode = 'schedule';
+        currentMonthOffset = 0;
         currentWeekOffset = 0;
     }
     updateNavButtons();
