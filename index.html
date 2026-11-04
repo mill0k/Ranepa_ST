@@ -10,13 +10,17 @@
     <!-- Верхняя навигация -->
     <div class="header-nav">
         <div class="week-nav">
-            <button id="prevWeek" title="Предыдущая неделя">‹</button>
+            <button id="prevWeek" class="arrow-btn">‹</button>
+            <button id="todayBtn" class="today-btn">Сегодня</button>
             <h1 class="current-week-title" id="weekTitle">Текущая неделя</h1>
-            <button id="nextWeek" title="Следующая неделя">›</button>
+            <button id="nextWeek" class="arrow-btn">›</button>
         </div>
-        <div class="top-buttons">
-            <button id="calendarBtn" class="top-btn">📆 Календарь</button>
-            <button id="scheduleBtn" class="top-btn active">📅 Расписание</button>
+        <div class="group-select-wrapper">
+            <select id="groupSelect" class="group-select">
+                <option value="all">Все группы</option>
+                <option value="ЭБ-5-23-01">ЭБ-5-23-01</option>
+                <option value="ЭБ-5-23-02">ЭБ-5-23-02</option>
+            </select>
         </div>
     </div>
 
@@ -43,6 +47,18 @@
             <ul id="updateChanges"></ul>
         </div>
     </footer>
+
+    <!-- Круглые кнопки внизу -->
+    <div class="bottom-nav">
+        <button id="scheduleBtn" class="nav-btn active">
+            <span class="nav-icon">📅</span>
+            <span class="nav-label">Расписание</span>
+        </button>
+        <button id="calendarBtn" class="nav-btn">
+            <span class="nav-icon">📆</span>
+            <span class="nav-label">Календарь</span>
+        </button>
+    </div>
 
     <script src="script.js"></script>
 </body>
