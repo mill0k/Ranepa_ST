@@ -7,7 +7,6 @@ let currentMonthOffset = 0;
 let selectedGroup = 'all';
 let changelogData = null;
 
-// Границы расписания
 let minDate = null;
 let maxDate = null;
 
@@ -23,7 +22,6 @@ async function loadData() {
         if (scheduleRes.ok) scheduleData = await scheduleRes.json();
         if (sessionRes.ok) sessionData = await sessionRes.json();
         
-        // Вычисляем границы расписания для обоих режимов
         computeDateBounds(scheduleData);
         
         if (changelogRes.ok) {
@@ -46,18 +44,27 @@ async function loadData() {
     }
 }
 
+function getDateFromDayMonth(d, m) {
+    const now = new Date();
+    let year = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    
+    if (m <= 2 && currentMonth >= 10) {
+        year++;
+    } else if (m >= 11 && currentMonth <= 2) {
+        year--;
+    }
+    
+    return new Date(year, m - 1, d);
+}
+
 function computeDateBounds(data) {
     const dates = [];
     data.forEach(l => {
         if (!l.date || !l.month) return;
         const d = parseInt(l.date);
         const m = parseInt(l.month);
-        let year = 2026;
-        // Если месяц 1 (январь), а сейчас декабрь — значит следующий год
-        if (m === 1 && new Date().getMonth() === 11) year = 2027;
-        // Если месяц 12 (декабрь), а сейчас январь — значит прошлый год
-        if (m === 12 && new Date().getMonth() === 0) year = 2025;
-        dates.push(new Date(year, m - 1, d));
+        dates.push(getDateFromDayMonth(d, m));
     });
     
     if (dates.length > 0) {
@@ -116,7 +123,7 @@ function renderScheduleList(data) {
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
-        return new Date(2026, m1-1, d1) - new Date(2026, m2-1, d2);
+        return getDateFromDayMonth(d1, m1) - getDateFromDayMonth(d2, m2);
     });
     
     const today = new Date();
@@ -133,10 +140,6 @@ function renderScheduleList(data) {
     const filteredDates = sortedDates.filter(date => weekDates.includes(date));
     
     if (filteredDates.length === 0) {
-        const dayNames = {
-            'Пн.': 'Понедельник', 'Вт.': 'Вторник', 'Ср.': 'Среда',
-            'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
-        };
         container.innerHTML = `
             <div style="text-align:center; color: #757575; padding: 40px 20px;">
                 <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
@@ -151,7 +154,7 @@ function renderScheduleList(data) {
     filteredDates.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
-        const lessonDate = new Date(2026, month - 1, day);
+        const lessonDate = getDateFromDayMonth(day, month);
         const dayOfWeek = lessonDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         const isToday = dateKey === todayStr;
@@ -256,7 +259,7 @@ function renderCalendar(data) {
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         
         if (isWeekend) div.classList.add('weekend');
-        if (d === today.getDate() && month === today.getMonth() && currentMonthOffset === 0) {
+        if (d === today.getDate() && (currentMonth % 12) === today.getMonth() && currentMonthOffset === 0) {
             div.classList.add('today');
         }
         
@@ -291,7 +294,7 @@ function renderHistory() {
     const container = document.getElementById('historyContent');
     
     if (!changelogData || !changelogData.changes || changelogData.changes.length === 0) {
-        container.innerHTML = '<p class="no-history">📭 История изменений пуста<br>Обновления появятся когда расписание изменится</p>';
+        container.innerHTML = '<p class="no-history">📭 История изменений пуста.<br>Здесь появятся записи, когда расписание обновится.</p>';
         return;
     }
     
