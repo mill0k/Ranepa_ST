@@ -224,20 +224,28 @@ function renderCalendar() {
     
     document.getElementById('calendarMonthTitle').textContent = `${monthNames[currentMonth % 12]} ${currentYear}`;
     
+    // Заголовки дней недели: Пн, Вт, Ср, Чт, Пт, Сб, Вс
     const dayHeaders = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     dayHeaders.forEach(day => {
         const div = document.createElement('div');
-        div.className = 'cal-day-header' + (day === 'Сб' || day === 'Вс' ? ' weekend' : '');
+        div.className = 'cal-day-header' + (day === 'Вс' ? ' weekend' : '');
         div.textContent = day;
         container.appendChild(div);
     });
     
     const year = currentYear;
     const month = currentMonth % 12;
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startOffset = firstDay === 0 ? 6 : firstDay - 1;
     
+    // Правильный расчет смещения для начала недели с понедельника
+    const firstDayOfMonth = new Date(year, month, 1);
+    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0=Вс, 1=Пн, 2=Вт, ...
+    
+    // Преобразуем: Вс(0)->6, Пн(1)->0, Вт(2)->1, Ср(3)->2, Чт(4)->3, Пт(5)->4, Сб(6)->5
+    const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Пустые ячейки до первого дня месяца
     for (let i = 0; i < startOffset; i++) {
         const div = document.createElement('div');
         div.className = 'cal-day empty';
@@ -251,17 +259,25 @@ function renderCalendar() {
         lessonDates[l.date].push(l);
     });
     
+    // Заполняем дни месяца
     for (let d = 1; d <= daysInMonth; d++) {
         const div = document.createElement('div');
         div.className = 'cal-day';
-        div.textContent = d;
         
         const dateStr = String(d).padStart(2, '0');
-        const dayOfWeek = new Date(year, month, d).getDay();
+        const currentDayDate = new Date(year, month, d);
+        const dayOfWeek = currentDayDate.getDay(); // 0=Вс, 1=Пн, ...
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isSunday = dayOfWeek === 0;
         
-        const lessonDate = new Date(year, month, d);
-        const isPast = lessonDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const isPast = currentDayDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        // Добавляем номер дня
+        const dayNumber = document.createElement('div');
+        dayNumber.textContent = d;
+        dayNumber.style.fontWeight = '600';
+        dayNumber.style.fontSize = '0.75rem';
+        div.appendChild(dayNumber);
         
         if (isWeekend) div.classList.add('weekend');
         if (isPast) div.classList.add('past');
@@ -269,10 +285,10 @@ function renderCalendar() {
             div.classList.add('today');
         }
         
-        if (lessonDates[dateStr]) {
+        // Воскресенье всегда пустое - не показываем занятия
+        if (!isSunday && lessonDates[dateStr]) {
             const firstLesson = lessonDates[dateStr][0];
             
-            // Определяем формат и добавляем класс для цвета
             const isDSR = firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'));
             const isSDO = firstLesson.type === 'СДО' || (firstLesson.room && firstLesson.room.includes('СДО'));
             
@@ -282,14 +298,13 @@ function renderCalendar() {
                 div.classList.add('sdo-day');
             }
             
-            // Информация о занятии
             const lessonInfo = document.createElement('div');
             lessonInfo.className = 'cal-lesson-info';
             lessonInfo.innerHTML = `
                 <div class="cal-time">${firstLesson.time || ''}</div>
                 <div class="cal-subject">${firstLesson.subject || ''}</div>
                 <div class="cal-type">${firstLesson.type || ''}</div>
-                <div class="cal-room">🚪 ${firstLesson.room || ''}</div>
+                <div class="cal-room">🚪${firstLesson.room || ''}</div>
             `;
             div.appendChild(lessonInfo);
         }
