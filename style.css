@@ -229,18 +229,18 @@ body {
 
 /* Календарь */
 .calendar-container {
-    padding: 16px;
+    padding: 12px;
 }
 
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .calendar-header h2 {
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: var(--primary-gray);
 }
 
@@ -248,25 +248,25 @@ body {
     background: var(--primary-gray);
     border: none;
     color: white;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 2px;
 }
 
 .cal-day-header {
     text-align: center;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
-    padding: 8px 0;
+    padding: 4px 0;
 }
 
 .cal-day-header.weekend {
@@ -276,17 +276,19 @@ body {
 .cal-day {
     aspect-ratio: 1;
     background: var(--card-bg);
-    border-radius: 8px;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
+    font-size: 0.7rem;
     cursor: pointer;
     border: 1px solid var(--light-gray);
-    min-height: 80px;
+    min-height: 36px;
+    max-height: 40px;
     position: relative;
-    padding: 4px;
+    padding: 1px;
+    overflow: hidden;
 }
 
 .cal-day.weekend {
@@ -308,15 +310,17 @@ body {
 
 .cal-lesson-info {
     width: 100%;
-    margin-top: 4px;
-    font-size: 0.65rem;
-    line-height: 1.2;
+    margin-top: 1px;
+    font-size: 0.45rem;
+    line-height: 1;
     text-align: center;
+    overflow: hidden;
 }
 
 .cal-time {
     font-weight: 700;
     color: var(--secondary-gray);
+    font-size: 0.45rem;
 }
 
 .cal-subject {
@@ -324,15 +328,18 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 0.4rem;
 }
 
 .cal-type {
     color: var(--text-secondary);
+    font-size: 0.4rem;
 }
 
 .cal-room {
     color: var(--text-secondary);
-    font-size: 0.6rem;
+    font-size: 0.35rem;
+    display: none;
 }
 
 /* Круглые кнопки внизу */
