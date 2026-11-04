@@ -29,9 +29,22 @@
         <div id="scheduleView">
             <div id="scheduleList" class="schedule-list"></div>
         </div>
+    </main>
 
-        <!-- Вид календаря -->
-        <div id="calendarView" class="hidden">
+    <footer id="changelogFooter" class="hidden">
+        <div class="changelog-content">
+            <strong>🔄 Обновлено:</strong> <span id="updateDate"></span>
+            <ul id="updateChanges"></ul>
+        </div>
+    </footer>
+
+    <!-- Боковая панель календаря -->
+    <div id="calendarPanel" class="side-panel">
+        <div class="side-panel-content">
+            <div class="side-panel-header">
+                <h2>📆 Календарь</h2>
+                <button class="close-btn" onclick="closeCalendar()">✕</button>
+            </div>
             <div class="calendar-container">
                 <div class="calendar-header">
                     <button id="prevMonth" class="nav-arrow">‹</button>
@@ -41,22 +54,21 @@
                 <div id="calendarGrid" class="calendar-grid"></div>
             </div>
         </div>
+    </div>
 
-        <!-- Вид истории обновлений -->
-        <div id="historyView" class="hidden">
-            <div class="history-container">
-                <h2 class="history-title">📋 История обновлений</h2>
-                <div id="historyContent" class="history-content"></div>
+    <!-- Боковая панель истории -->
+    <div id="historyPanel" class="side-panel">
+        <div class="side-panel-content">
+            <div class="side-panel-header">
+                <h2>📋 История обновлений</h2>
+                <button class="close-btn" onclick="closeHistory()">✕</button>
             </div>
+            <div id="historyContent" class="history-content"></div>
         </div>
-    </main>
+    </div>
 
-    <footer id="changelogFooter" class="hidden">
-        <div class="changelog-content">
-            <strong>🔄 Обновлено:</strong> <span id="updateDate"></span>
-            <ul id="updateChanges"></ul>
-        </div>
-    </footer>
+    <!-- Затемнение фона -->
+    <div id="overlay" class="overlay" onclick="closeAllPanels()"></div>
 
     <!-- Круглые кнопки внизу -->
     <div class="bottom-nav">
