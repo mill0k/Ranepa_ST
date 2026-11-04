@@ -216,7 +216,6 @@ function renderCalendar() {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + currentMonthOffset;
     
-    // Ограничение: только прошлый, текущий и следующий месяц
     const minMonthOffset = -1;
     const maxMonthOffset = 1;
     
@@ -261,7 +260,6 @@ function renderCalendar() {
         const dayOfWeek = new Date(year, month, d).getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         
-        // Прошедшие дни
         const lessonDate = new Date(year, month, d);
         const isPast = lessonDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
         
@@ -283,7 +281,6 @@ function renderCalendar() {
             const lessonInfo = document.createElement('div');
             lessonInfo.className = 'cal-lesson-info';
             
-            // Определяем формат
             let format = 'Очно';
             if (firstLesson.type === 'ДСР' || (firstLesson.subject && firstLesson.subject.includes('самостоятельной'))) {
                 format = 'ДСР';
@@ -295,6 +292,7 @@ function renderCalendar() {
                 <div class="cal-time">${firstLesson.time || ''}</div>
                 <div class="cal-type">${firstLesson.type || ''}</div>
                 <div class="cal-format">${format}</div>
+                <div class="cal-room">🚪 ${firstLesson.room || ''}</div>
             `;
             div.appendChild(lessonInfo);
         }
