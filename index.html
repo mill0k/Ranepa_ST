@@ -9,11 +9,30 @@
 <body>
     <header>
         <div class="header-top">
-            <h1>📚 ЭБ-5-23-01/02</h1>
-            <div class="mode-switch">
-                <button id="modeSchedule" class="mode-btn active">Расписание</button>
-                <button id="modeSession" class="mode-btn">Сессия</button>
+            <h1>📚 ЭБ-5-23</h1>
+            
+            <!-- Выбор группы -->
+            <div class="group-switch">
+                <button data-group="1" class="group-btn">1</button>
+                <button data-group="both" class="group-btn active">Обе</button>
+                <button data-group="2" class="group-btn">2</button>
             </div>
+        </div>
+        
+        <!-- Три круглые кнопки в ряд -->
+        <div class="round-buttons">
+            <button id="btnSchedule" class="round-btn active">
+                <span class="round-icon">📋</span>
+                <span class="round-label">Расписание</span>
+            </button>
+            <button id="btnSession" class="round-btn">
+                <span class="round-icon">🎓</span>
+                <span class="round-label">Сессия</span>
+            </button>
+            <button id="btnCalendar" class="round-btn">
+                <span class="round-icon">📅</span>
+                <span class="round-label">Календарь</span>
+            </button>
         </div>
         
         <!-- Навигация для списка (недели) -->
@@ -45,13 +64,6 @@
             <div id="calendarGrid" class="calendar-grid"></div>
         </div>
     </main>
-
-    <!-- Круглые кнопки внизу -->
-    <div class="fab-container">
-        <button id="toggleView" class="fab fab-main">
-            <span id="fabIcon">📅</span>
-        </button>
-    </div>
 
     <!-- Уведомление об изменениях -->
     <div id="changelogBanner" class="changelog-banner hidden">
