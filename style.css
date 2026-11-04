@@ -415,6 +415,109 @@ body {
     display: none !important;
 }
 
+/* Кнопка обновлений */
+.updates-btn {
+    background: rgba(255,255,255,0.2) !important;
+    width: 40px;
+    height: 40px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+/* Панель обновлений */
+.updates-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 400px;
+    height: 100%;
+    background: white;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.updates-header {
+    background: var(--primary-gray);
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.updates-header h3 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.close-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.updates-content {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.last-update {
+    background: var(--bg-color);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+}
+
+.last-update strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--primary-gray);
+}
+
+.changes-list {
+    font-size: 0.9rem;
+}
+
+.change-item {
+    background: var(--bg-color);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--primary-gray);
+}
+
+.change-date {
+    font-weight: 600;
+    color: var(--primary-gray);
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.change-details {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
 @media (max-width: 480px) {
     .lesson {
         grid-template-columns: 50px 1fr;
