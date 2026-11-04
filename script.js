@@ -5,12 +5,11 @@ let sessionData = [];
 let currentWeekOffset = 0;
 let currentMonthOffset = 0;
 let selectedGroup = 'all';
-let changelogData = [];
+let changelogData = null;
 
-let scheduleMinDate = null;
-let scheduleMaxDate = null;
-let sessionMinDate = null;
-let sessionMaxDate = null;
+// Границы расписания
+let minDate = null;
+let maxDate = null;
 
 async function loadData() {
     try {
@@ -24,33 +23,20 @@ async function loadData() {
         if (scheduleRes.ok) scheduleData = await scheduleRes.json();
         if (sessionRes.ok) sessionData = await sessionRes.json();
         
-        computeDateBounds();
+        // Вычисляем границы расписания для обоих режимов
+        computeDateBounds(scheduleData);
         
         if (changelogRes.ok) {
-            const changelog = await changelogRes.json();
-            document.getElementById('updateDate').textContent = changelog.date;
-            document.getElementById('lastUpdateDate').textContent = changelog.date;
-            
+            changelogData = await changelogRes.json();
+            document.getElementById('updateDate').textContent = changelogData.date;
             const changesList = document.getElementById('updateChanges');
             changesList.innerHTML = '';
-            changelog.changes.forEach(change => {
+            changelogData.changes.forEach(change => {
                 const li = document.createElement('li');
                 li.textContent = change;
                 changesList.appendChild(li);
             });
             document.getElementById('changelogFooter').classList.remove('hidden');
-            
-            const panelChanges = document.getElementById('changesList');
-            panelChanges.innerHTML = '';
-            changelog.changes.forEach(change => {
-                const div = document.createElement('div');
-                div.className = 'change-item';
-                div.innerHTML = `
-                    <div class="change-date">${changelog.date}</div>
-                    <div class="change-details">${change}</div>
-                `;
-                panelChanges.appendChild(div);
-            });
         }
         
         render();
@@ -60,49 +46,23 @@ async function loadData() {
     }
 }
 
-function getYearForDate(month) {
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    let year = now.getFullYear();
-    
-    if (month < currentMonth) {
-        year++;
-    }
-    
-    return year;
-}
-
-function computeDateBounds() {
-    // Границы для расписания
-    const scheduleDates = [];
-    scheduleData.forEach(l => {
+function computeDateBounds(data) {
+    const dates = [];
+    data.forEach(l => {
         if (!l.date || !l.month) return;
         const d = parseInt(l.date);
         const m = parseInt(l.month);
         let year = 2026;
+        // Если месяц 1 (январь), а сейчас декабрь — значит следующий год
         if (m === 1 && new Date().getMonth() === 11) year = 2027;
-        scheduleDates.push(new Date(year, m - 1, d));
+        // Если месяц 12 (декабрь), а сейчас январь — значит прошлый год
+        if (m === 12 && new Date().getMonth() === 0) year = 2025;
+        dates.push(new Date(year, m - 1, d));
     });
     
-    if (scheduleDates.length > 0) {
-        scheduleMinDate = new Date(Math.min(...scheduleDates));
-        scheduleMaxDate = new Date(Math.max(...scheduleDates));
-    }
-    
-    // Границы для сессии
-    const sessionDates = [];
-    sessionData.forEach(l => {
-        if (!l.date || !l.month) return;
-        const d = parseInt(l.date);
-        const m = parseInt(l.month);
-        let year = 2027; // Сессия обычно в январе
-        if (m === 12) year = 2026;
-        sessionDates.push(new Date(year, m - 1, d));
-    });
-    
-    if (sessionDates.length > 0) {
-        sessionMinDate = new Date(Math.min(...sessionDates));
-        sessionMaxDate = new Date(Math.max(...sessionDates));
+    if (dates.length > 0) {
+        minDate = new Date(Math.min(...dates));
+        maxDate = new Date(Math.max(...dates));
     }
 }
 
@@ -112,11 +72,18 @@ function render() {
     if (currentView === 'list') {
         document.getElementById('scheduleView').classList.remove('hidden');
         document.getElementById('calendarView').classList.add('hidden');
+        document.getElementById('historyView').classList.add('hidden');
         renderScheduleList(data);
-    } else {
+    } else if (currentView === 'calendar') {
         document.getElementById('scheduleView').classList.add('hidden');
         document.getElementById('calendarView').classList.remove('hidden');
+        document.getElementById('historyView').classList.add('hidden');
         renderCalendar(data);
+    } else if (currentView === 'history') {
+        document.getElementById('scheduleView').classList.add('hidden');
+        document.getElementById('calendarView').classList.add('hidden');
+        document.getElementById('historyView').classList.remove('hidden');
+        renderHistory();
     }
     updateWeekTitle();
     updateWeekButtons();
@@ -149,37 +116,27 @@ function renderScheduleList(data) {
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
-        const year1 = currentMode === 'session' ? getYearForDate(m1) : 2026;
-        const year2 = currentMode === 'session' ? getYearForDate(m2) : 2026;
-        return new Date(year1, m1-1, d1) - new Date(year2, m2-1, d2);
+        return new Date(2026, m1-1, d1) - new Date(2026, m2-1, d2);
     });
     
-    let datesToShow;
-    if (currentMode === 'session') {
-        datesToShow = sortedDates;
-    } else {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
-        const weekDates = [];
-        for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
-            weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
-        }
-        
-        const filteredDates = sortedDates.filter(date => weekDates.includes(date));
-        datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, 7);
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const weekDates = [];
+    for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+        weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
     }
     
-    if (datesToShow.length === 0) {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
+    const filteredDates = sortedDates.filter(date => weekDates.includes(date));
+    
+    if (filteredDates.length === 0) {
+        const dayNames = {
+            'Пн.': 'Понедельник', 'Вт.': 'Вторник', 'Ср.': 'Среда',
+            'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
+        };
         container.innerHTML = `
             <div style="text-align:center; color: #757575; padding: 40px 20px;">
                 <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
@@ -189,17 +146,15 @@ function renderScheduleList(data) {
         return;
     }
     
-    const today = new Date();
     const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
     
-    datesToShow.forEach(dateKey => {
+    filteredDates.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
-        const year = currentMode === 'session' ? getYearForDate(month) : 2026;
-        const lessonDate = new Date(year, month - 1, day);
+        const lessonDate = new Date(2026, month - 1, day);
         const dayOfWeek = lessonDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const isToday = dateKey === todayStr && year === today.getFullYear();
+        const isToday = dateKey === todayStr;
         
         const dayBlock = document.createElement('div');
         dayBlock.className = 'day-block' + (isWeekend ? ' weekend' : '');
@@ -211,8 +166,8 @@ function renderScheduleList(data) {
             'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
         };
         header.innerHTML = `
-            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}${currentMode === 'session' ? '.' + year : ''}</span>
-            ${isToday ? '<span style="font-size:0.8rem"> Сегодня</span>' : ''}
+            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}</span>
+            ${isToday ? '<span style="font-size:0.8rem">📍 Сегодня</span>' : ''}
             ${isWeekend && !isToday ? '<span style="font-size:0.8rem; color:#f44336">Выходной</span>' : ''}
         `;
         dayBlock.appendChild(header);
@@ -241,8 +196,8 @@ function renderScheduleList(data) {
                 <div class="lesson-details">
                     <div class="lesson-subject">${lesson.subject || ''} ${badge}</div>
                     <div class="lesson-type">${lesson.type || ''} | ${groups}</div>
-                    <div class="lesson-teacher"> ${lesson.teacher || 'Не указан'}</div>
-                    <div class="lesson-room"> ${lesson.room || 'Не указана'}</div>
+                    <div class="lesson-teacher">👤 ${lesson.teacher || 'Не указан'}</div>
+                    <div class="lesson-room">🚪 ${lesson.room || 'Не указана'}</div>
                 </div>
             `;
             dayBlock.appendChild(lessonDiv);
@@ -332,6 +287,26 @@ function renderCalendar(data) {
     }
 }
 
+function renderHistory() {
+    const container = document.getElementById('historyContent');
+    
+    if (!changelogData || !changelogData.changes || changelogData.changes.length === 0) {
+        container.innerHTML = '<p class="no-history">📭 История изменений пуста<br>Обновления появятся когда расписание изменится</p>';
+        return;
+    }
+    
+    const html = `
+        <div class="history-update">
+            <div class="history-date">🕐 Последнее обновление: ${changelogData.date}</div>
+            <ul class="history-changes">
+                ${changelogData.changes.map(change => `<li>${change}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
 function updateWeekTitle() {
     const today = new Date();
     const weekStart = new Date(today);
@@ -353,10 +328,6 @@ function updateWeekButtons() {
     const prevBtn = document.getElementById('prevWeek');
     const nextBtn = document.getElementById('nextWeek');
     
-    // Определяем границы в зависимости от режима
-    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
-    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
-    
     if (minDate && weekEnd < minDate) {
         prevBtn.disabled = true;
     } else {
@@ -373,6 +344,7 @@ function updateWeekButtons() {
 function updateNavButtons() {
     document.getElementById('scheduleBtn').classList.toggle('active', currentView === 'list');
     document.getElementById('calendarBtn').classList.toggle('active', currentView === 'calendar');
+    document.getElementById('historyBtn').classList.toggle('active', currentView === 'history');
     
     const scheduleBtn = document.getElementById('scheduleBtn');
     const label = scheduleBtn.querySelector('.nav-label');
@@ -389,7 +361,6 @@ document.getElementById('prevWeek').addEventListener('click', () => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
-    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
     if (minDate && weekEnd < minDate) return;
     
     currentWeekOffset--;
@@ -401,7 +372,6 @@ document.getElementById('nextWeek').addEventListener('click', () => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset + 1) * 7));
     
-    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
     if (maxDate && weekStart > maxDate) return;
     
     currentWeekOffset++;
@@ -424,7 +394,7 @@ document.getElementById('nextMonth').addEventListener('click', () => {
 });
 
 document.getElementById('scheduleBtn').addEventListener('click', () => {
-    if (currentView === 'calendar') {
+    if (currentView === 'calendar' || currentView === 'history') {
         currentView = 'list';
     } else {
         currentMode = currentMode === 'schedule' ? 'session' : 'schedule';
@@ -439,26 +409,15 @@ document.getElementById('calendarBtn').addEventListener('click', () => {
     render();
 });
 
-document.getElementById('groupSelect').addEventListener('change', (e) => {
-    selectedGroup = e.target.value;
+document.getElementById('historyBtn').addEventListener('click', () => {
+    currentView = 'history';
+    updateNavButtons();
     render();
 });
 
-// Панель обновлений
-document.getElementById('updatesBtn').addEventListener('click', () => {
-    document.getElementById('updatesPanel').classList.remove('hidden');
-});
-
-document.getElementById('closeUpdates').addEventListener('click', () => {
-    document.getElementById('updatesPanel').classList.add('hidden');
-});
-
-document.addEventListener('click', (e) => {
-    const panel = document.getElementById('updatesPanel');
-    const btn = document.getElementById('updatesBtn');
-    if (!panel.contains(e.target) && !btn.contains(e.target)) {
-        panel.classList.add('hidden');
-    }
+document.getElementById('groupSelect').addEventListener('change', (e) => {
+    selectedGroup = e.target.value;
+    render();
 });
 
 // Инициализация
