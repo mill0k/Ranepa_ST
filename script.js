@@ -6,6 +6,10 @@ let currentWeekOffset = 0;
 let currentMonthOffset = 0;
 let selectedGroup = 'all';
 
+// Границы расписания
+let minDate = null;
+let maxDate = null;
+
 async function loadData() {
     try {
         const t = Date.now();
@@ -17,6 +21,9 @@ async function loadData() {
         
         if (scheduleRes.ok) scheduleData = await scheduleRes.json();
         if (sessionRes.ok) sessionData = await sessionRes.json();
+        
+        // Вычисляем границы расписания
+        computeDateBounds(scheduleData);
         
         if (changelogRes.ok) {
             const changelog = await changelogRes.json();
@@ -38,6 +45,24 @@ async function loadData() {
     }
 }
 
+function computeDateBounds(data) {
+    const dates = [];
+    data.forEach(l => {
+        if (!l.date || !l.month) return;
+        const d = parseInt(l.date);
+        const m = parseInt(l.month);
+        let year = 2026;
+        // Если месяц 1, а сейчас декабрь — значит следующий год
+        if (m === 1 && new Date().getMonth() === 11) year = 2027;
+        dates.push(new Date(year, m - 1, d));
+    });
+    
+    if (dates.length > 0) {
+        minDate = new Date(Math.min(...dates));
+        maxDate = new Date(Math.max(...dates));
+    }
+}
+
 function render() {
     const data = currentMode === 'schedule' ? scheduleData : sessionData;
     
@@ -51,6 +76,7 @@ function render() {
         renderCalendar(data);
     }
     updateWeekTitle();
+    updateWeekButtons();
 }
 
 function filterByGroup(data) {
@@ -95,16 +121,26 @@ function renderScheduleList(data) {
     }
     
     const filteredDates = sortedDates.filter(date => weekDates.includes(date));
-    const datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, 7);
     
-    const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
-    
-    if (datesToShow.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color: #757575; padding: 40px 20px;">На этой неделе нет занятий</p>';
+    // Если на выбранной неделе нет занятий — показываем сообщение, НЕ возвращаем в начало
+    if (filteredDates.length === 0) {
+        const dayNames = {
+            'Пн.': 'Понедельник', 'Вт.': 'Вторник', 'Ср.': 'Среда',
+            'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
+        };
+        const startDayName = dayNames[weekStart.toLocaleDateString('ru-RU', { weekday: 'short' }) + '.'] || '';
+        container.innerHTML = `
+            <div style="text-align:center; color: #757575; padding: 40px 20px;">
+                <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
+                <p style="font-size: 0.9rem;">${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} — ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}</p>
+            </div>
+        `;
         return;
     }
     
-    datesToShow.forEach(dateKey => {
+    const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
+    
+    filteredDates.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
         const lessonDate = new Date(2026, month - 1, day);
@@ -222,10 +258,6 @@ function renderCalendar(data) {
             if (hasDSR) div.classList.add('dsr-day');
             
             const firstLesson = lessonDates[dateStr][0];
-            let groups = firstLesson.group || '';
-            if (groups.includes('/')) {
-                groups = groups.split('/').map(g => g.trim()).join(', ');
-            }
             
             const lessonInfo = document.createElement('div');
             lessonInfo.className = 'cal-lesson-info';
@@ -233,7 +265,6 @@ function renderCalendar(data) {
                 <div class="cal-time">${firstLesson.time || ''}</div>
                 <div class="cal-subject">${firstLesson.subject || ''}</div>
                 <div class="cal-type">${firstLesson.type || ''}</div>
-                <div class="cal-room">${firstLesson.room || ''}</div>
             `;
             div.appendChild(lessonInfo);
         }
@@ -259,6 +290,31 @@ function updateWeekTitle() {
     document.getElementById('weekTitle').textContent = currentWeekOffset === 0 ? 'Текущая неделя' : title;
 }
 
+function updateWeekButtons() {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const prevBtn = document.getElementById('prevWeek');
+    const nextBtn = document.getElementById('nextWeek');
+    
+    // Блокируем кнопку "назад", если неделя раньше минимальной даты расписания
+    if (minDate && weekEnd < minDate) {
+        prevBtn.disabled = true;
+    } else {
+        prevBtn.disabled = false;
+    }
+    
+    // Блокируем кнопку "вперёд", если неделя позже максимальной даты расписания
+    if (maxDate && weekStart > maxDate) {
+        nextBtn.disabled = true;
+    } else {
+        nextBtn.disabled = false;
+    }
+}
+
 function updateNavButtons() {
     document.getElementById('scheduleBtn').classList.toggle('active', currentView === 'list');
     document.getElementById('calendarBtn').classList.toggle('active', currentView === 'calendar');
@@ -272,11 +328,27 @@ function updateNavButtons() {
 
 // Event Listeners
 document.getElementById('prevWeek').addEventListener('click', () => {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset - 1) * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    // Не даём уйти раньше минимальной даты
+    if (minDate && weekEnd < minDate) return;
+    
     currentWeekOffset--;
     render();
 });
 
 document.getElementById('nextWeek').addEventListener('click', () => {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset + 1) * 7));
+    
+    // Не даём уйти позже максимальной даты
+    if (maxDate && weekStart > maxDate) return;
+    
     currentWeekOffset++;
     render();
 });
