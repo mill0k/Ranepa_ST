@@ -7,8 +7,10 @@ let currentMonthOffset = 0;
 let selectedGroup = 'all';
 let changelogData = [];
 
-let minDate = null;
-let maxDate = null;
+let scheduleMinDate = null;
+let scheduleMaxDate = null;
+let sessionMinDate = null;
+let sessionMaxDate = null;
 
 async function loadData() {
     try {
@@ -22,8 +24,7 @@ async function loadData() {
         if (scheduleRes.ok) scheduleData = await scheduleRes.json();
         if (sessionRes.ok) sessionData = await sessionRes.json();
         
-        computeDateBounds(scheduleData);
-        computeDateBounds(sessionData);
+        computeDateBounds();
         
         if (changelogRes.ok) {
             const changelog = await changelogRes.json();
@@ -39,7 +40,6 @@ async function loadData() {
             });
             document.getElementById('changelogFooter').classList.remove('hidden');
             
-            // Заполняем панель обновлений
             const panelChanges = document.getElementById('changesList');
             panelChanges.innerHTML = '';
             changelog.changes.forEach(change => {
@@ -65,34 +65,44 @@ function getYearForDate(month) {
     const currentMonth = now.getMonth() + 1;
     let year = now.getFullYear();
     
-    // Если месяц занятия меньше текущего — значит следующий год
     if (month < currentMonth) {
         year++;
-    }
-    // Если месяц равен текущему, но день уже прошёл — тоже следующий год
-    if (month === currentMonth) {
-        // Оставляем текущий год
     }
     
     return year;
 }
 
-function computeDateBounds(data) {
-    const dates = [];
-    data.forEach(l => {
+function computeDateBounds() {
+    // Границы для расписания
+    const scheduleDates = [];
+    scheduleData.forEach(l => {
         if (!l.date || !l.month) return;
         const d = parseInt(l.date);
         const m = parseInt(l.month);
-        const year = getYearForDate(m);
-        dates.push(new Date(year, m - 1, d));
+        let year = 2026;
+        if (m === 1 && new Date().getMonth() === 11) year = 2027;
+        scheduleDates.push(new Date(year, m - 1, d));
     });
     
-    if (dates.length > 0) {
-        const min = new Date(Math.min(...dates));
-        const max = new Date(Math.max(...dates));
-        
-        if (!minDate || min < minDate) minDate = min;
-        if (!maxDate || max > maxDate) maxDate = max;
+    if (scheduleDates.length > 0) {
+        scheduleMinDate = new Date(Math.min(...scheduleDates));
+        scheduleMaxDate = new Date(Math.max(...scheduleDates));
+    }
+    
+    // Границы для сессии
+    const sessionDates = [];
+    sessionData.forEach(l => {
+        if (!l.date || !l.month) return;
+        const d = parseInt(l.date);
+        const m = parseInt(l.month);
+        let year = 2027; // Сессия обычно в январе
+        if (m === 12) year = 2026;
+        sessionDates.push(new Date(year, m - 1, d));
+    });
+    
+    if (sessionDates.length > 0) {
+        sessionMinDate = new Date(Math.min(...sessionDates));
+        sessionMaxDate = new Date(Math.max(...sessionDates));
     }
 }
 
@@ -139,12 +149,11 @@ function renderScheduleList(data) {
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
-        const year1 = getYearForDate(m1);
-        const year2 = getYearForDate(m2);
+        const year1 = currentMode === 'session' ? getYearForDate(m1) : 2026;
+        const year2 = currentMode === 'session' ? getYearForDate(m2) : 2026;
         return new Date(year1, m1-1, d1) - new Date(year2, m2-1, d2);
     });
     
-    // Для сессии показываем все даты, для расписания — текущую неделю
     let datesToShow;
     if (currentMode === 'session') {
         datesToShow = sortedDates;
@@ -186,7 +195,7 @@ function renderScheduleList(data) {
     datesToShow.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
-        const year = getYearForDate(month);
+        const year = currentMode === 'session' ? getYearForDate(month) : 2026;
         const lessonDate = new Date(year, month - 1, day);
         const dayOfWeek = lessonDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -202,8 +211,8 @@ function renderScheduleList(data) {
             'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
         };
         header.innerHTML = `
-            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}.${year}</span>
-            ${isToday ? '<span style="font-size:0.8rem">📍 Сегодня</span>' : ''}
+            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}${currentMode === 'session' ? '.' + year : ''}</span>
+            ${isToday ? '<span style="font-size:0.8rem"> Сегодня</span>' : ''}
             ${isWeekend && !isToday ? '<span style="font-size:0.8rem; color:#f44336">Выходной</span>' : ''}
         `;
         dayBlock.appendChild(header);
@@ -232,8 +241,8 @@ function renderScheduleList(data) {
                 <div class="lesson-details">
                     <div class="lesson-subject">${lesson.subject || ''} ${badge}</div>
                     <div class="lesson-type">${lesson.type || ''} | ${groups}</div>
-                    <div class="lesson-teacher">👤 ${lesson.teacher || 'Не указан'}</div>
-                    <div class="lesson-room">🚪 ${lesson.room || 'Не указана'}</div>
+                    <div class="lesson-teacher"> ${lesson.teacher || 'Не указан'}</div>
+                    <div class="lesson-room"> ${lesson.room || 'Не указана'}</div>
                 </div>
             `;
             dayBlock.appendChild(lessonDiv);
@@ -344,6 +353,10 @@ function updateWeekButtons() {
     const prevBtn = document.getElementById('prevWeek');
     const nextBtn = document.getElementById('nextWeek');
     
+    // Определяем границы в зависимости от режима
+    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
+    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
+    
     if (minDate && weekEnd < minDate) {
         prevBtn.disabled = true;
     } else {
@@ -376,6 +389,7 @@ document.getElementById('prevWeek').addEventListener('click', () => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
+    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
     if (minDate && weekEnd < minDate) return;
     
     currentWeekOffset--;
@@ -387,6 +401,7 @@ document.getElementById('nextWeek').addEventListener('click', () => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset + 1) * 7));
     
+    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
     if (maxDate && weekStart > maxDate) return;
     
     currentWeekOffset++;
@@ -438,7 +453,6 @@ document.getElementById('closeUpdates').addEventListener('click', () => {
     document.getElementById('updatesPanel').classList.add('hidden');
 });
 
-// Закрытие по клику вне панели
 document.addEventListener('click', (e) => {
     const panel = document.getElementById('updatesPanel');
     const btn = document.getElementById('updatesBtn');
