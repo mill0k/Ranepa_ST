@@ -1,11 +1,10 @@
 let currentMode = 'schedule';
-let currentView = 'list';
 let scheduleData = [];
 let sessionData = [];
 let currentWeekOffset = 0;
+let sessionWeekOffset = 0;
 let currentMonthOffset = 0;
 let selectedGroup = 'all';
-let changelogData = [];
 
 let scheduleMinDate = null;
 let scheduleMaxDate = null;
@@ -53,7 +52,8 @@ async function loadData() {
             });
         }
         
-        render();
+        renderSchedule();
+        renderSession();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
         document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #757575; padding: 20px;">Не удалось загрузить расписание</p>';
@@ -73,7 +73,6 @@ function getYearForDate(month) {
 }
 
 function computeDateBounds() {
-    // Границы для расписания
     const scheduleDates = [];
     scheduleData.forEach(l => {
         if (!l.date || !l.month) return;
@@ -89,13 +88,12 @@ function computeDateBounds() {
         scheduleMaxDate = new Date(Math.max(...scheduleDates));
     }
     
-    // Границы для сессии
     const sessionDates = [];
     sessionData.forEach(l => {
         if (!l.date || !l.month) return;
         const d = parseInt(l.date);
         const m = parseInt(l.month);
-        let year = 2027; // Сессия обычно в январе
+        let year = 2027;
         if (m === 12) year = 2026;
         sessionDates.push(new Date(year, m - 1, d));
     });
@@ -106,22 +104,6 @@ function computeDateBounds() {
     }
 }
 
-function render() {
-    const data = currentMode === 'schedule' ? scheduleData : sessionData;
-    
-    if (currentView === 'list') {
-        document.getElementById('scheduleView').classList.remove('hidden');
-        document.getElementById('calendarView').classList.add('hidden');
-        renderScheduleList(data);
-    } else {
-        document.getElementById('scheduleView').classList.add('hidden');
-        document.getElementById('calendarView').classList.remove('hidden');
-        renderCalendar(data);
-    }
-    updateWeekTitle();
-    updateWeekButtons();
-}
-
 function filterByGroup(data) {
     if (selectedGroup === 'all') return data;
     return data.filter(lesson => {
@@ -130,8 +112,7 @@ function filterByGroup(data) {
     });
 }
 
-function renderScheduleList(data) {
-    const container = document.getElementById('scheduleList');
+function renderLessons(container, data, weekOffset, minDate, maxDate, showYear) {
     container.innerHTML = '';
     
     const filteredData = filterByGroup(data);
@@ -149,37 +130,25 @@ function renderScheduleList(data) {
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
-        const year1 = currentMode === 'session' ? getYearForDate(m1) : 2026;
-        const year2 = currentMode === 'session' ? getYearForDate(m2) : 2026;
+        const year1 = getYearForDate(m1);
+        const year2 = getYearForDate(m2);
         return new Date(year1, m1-1, d1) - new Date(year2, m2-1, d2);
     });
     
-    let datesToShow;
-    if (currentMode === 'session') {
-        datesToShow = sortedDates;
-    } else {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
-        const weekDates = [];
-        for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
-            weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
-        }
-        
-        const filteredDates = sortedDates.filter(date => weekDates.includes(date));
-        datesToShow = filteredDates.length > 0 ? filteredDates : sortedDates.slice(0, 7);
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + (weekOffset * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const weekDates = [];
+    for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+        weekDates.push(`${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`);
     }
     
-    if (datesToShow.length === 0) {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
+    const filteredDates = sortedDates.filter(date => weekDates.includes(date));
+    
+    if (filteredDates.length === 0) {
         container.innerHTML = `
             <div style="text-align:center; color: #757575; padding: 40px 20px;">
                 <p style="font-size: 1.1rem; margin-bottom: 8px;">📭 На этой неделе нет занятий</p>
@@ -189,13 +158,12 @@ function renderScheduleList(data) {
         return;
     }
     
-    const today = new Date();
     const todayStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth()+1).padStart(2, '0')}`;
     
-    datesToShow.forEach(dateKey => {
+    filteredDates.forEach(dateKey => {
         const dayData = grouped[dateKey];
         const [day, month] = dateKey.split('.').map(Number);
-        const year = currentMode === 'session' ? getYearForDate(month) : 2026;
+        const year = getYearForDate(month);
         const lessonDate = new Date(year, month - 1, day);
         const dayOfWeek = lessonDate.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -211,8 +179,8 @@ function renderScheduleList(data) {
             'Чт.': 'Четверг', 'Пт.': 'Пятница', 'Сб.': 'Суббота', 'Вс.': 'Воскресенье'
         };
         header.innerHTML = `
-            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}${currentMode === 'session' ? '.' + year : ''}</span>
-            ${isToday ? '<span style="font-size:0.8rem"> Сегодня</span>' : ''}
+            <span>${dayNames[dayData.dayName] || dayData.dayName}, ${dateKey}${showYear ? '.' + year : ''}</span>
+            ${isToday ? '<span style="font-size:0.8rem">📍 Сегодня</span>' : ''}
             ${isWeekend && !isToday ? '<span style="font-size:0.8rem; color:#f44336">Выходной</span>' : ''}
         `;
         dayBlock.appendChild(header);
@@ -241,8 +209,8 @@ function renderScheduleList(data) {
                 <div class="lesson-details">
                     <div class="lesson-subject">${lesson.subject || ''} ${badge}</div>
                     <div class="lesson-type">${lesson.type || ''} | ${groups}</div>
-                    <div class="lesson-teacher"> ${lesson.teacher || 'Не указан'}</div>
-                    <div class="lesson-room"> ${lesson.room || 'Не указана'}</div>
+                    <div class="lesson-teacher">👤 ${lesson.teacher || 'Не указан'}</div>
+                    <div class="lesson-room">🚪 ${lesson.room || 'Не указана'}</div>
                 </div>
             `;
             dayBlock.appendChild(lessonDiv);
@@ -251,11 +219,36 @@ function renderScheduleList(data) {
     });
 }
 
-function renderCalendar(data) {
+function renderSchedule() {
+    renderLessons(
+        document.getElementById('schedulePanelList'),
+        scheduleData,
+        currentWeekOffset,
+        scheduleMinDate,
+        scheduleMaxDate,
+        false
+    );
+    updateWeekTitle();
+}
+
+function renderSession() {
+    renderLessons(
+        document.getElementById('sessionPanelList'),
+        sessionData,
+        sessionWeekOffset,
+        sessionMinDate,
+        sessionMaxDate,
+        true
+    );
+    updateSessionWeekTitle();
+    updateSessionWeekButtons();
+}
+
+function renderCalendar() {
     const container = document.getElementById('calendarGrid');
     container.innerHTML = '';
     
-    const filteredData = filterByGroup(data);
+    const filteredData = filterByGroup(scheduleData);
     
     const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const today = new Date();
@@ -322,12 +315,6 @@ function renderCalendar(data) {
             div.appendChild(lessonInfo);
         }
         
-        div.addEventListener('click', () => {
-            currentView = 'list';
-            updateNavButtons();
-            render();
-        });
-        
         container.appendChild(div);
     }
 }
@@ -343,6 +330,17 @@ function updateWeekTitle() {
     document.getElementById('weekTitle').textContent = currentWeekOffset === 0 ? 'Текущая неделя' : title;
 }
 
+function updateSessionWeekTitle() {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + (sessionWeekOffset * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const title = `${weekStart.getDate()}.${String(weekStart.getMonth()+1).padStart(2,'0')} - ${weekEnd.getDate()}.${String(weekEnd.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('sessionWeekTitle').textContent = sessionWeekOffset === 0 ? 'Текущая неделя' : title;
+}
+
 function updateWeekButtons() {
     const today = new Date();
     const weekStart = new Date(today);
@@ -353,32 +351,54 @@ function updateWeekButtons() {
     const prevBtn = document.getElementById('prevWeek');
     const nextBtn = document.getElementById('nextWeek');
     
-    // Определяем границы в зависимости от режима
-    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
-    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
-    
-    if (minDate && weekEnd < minDate) {
+    if (scheduleMinDate && weekEnd < scheduleMinDate) {
         prevBtn.disabled = true;
     } else {
         prevBtn.disabled = false;
     }
     
-    if (maxDate && weekStart > maxDate) {
+    if (scheduleMaxDate && weekStart > scheduleMaxDate) {
         nextBtn.disabled = true;
     } else {
         nextBtn.disabled = false;
     }
 }
 
-function updateNavButtons() {
-    document.getElementById('scheduleBtn').classList.toggle('active', currentView === 'list');
-    document.getElementById('calendarBtn').classList.toggle('active', currentView === 'calendar');
+function updateSessionWeekButtons() {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + (sessionWeekOffset * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
     
-    const scheduleBtn = document.getElementById('scheduleBtn');
-    const label = scheduleBtn.querySelector('.nav-label');
-    if (label) {
-        label.textContent = currentMode === 'schedule' ? 'Расписание' : 'Сессия';
+    const prevBtn = document.getElementById('prevSessionWeek');
+    const nextBtn = document.getElementById('nextSessionWeek');
+    
+    if (sessionMinDate && weekEnd < sessionMinDate) {
+        prevBtn.disabled = true;
+    } else {
+        prevBtn.disabled = false;
     }
+    
+    if (sessionMaxDate && weekStart > sessionMaxDate) {
+        nextBtn.disabled = true;
+    } else {
+        nextBtn.disabled = false;
+    }
+}
+
+// Открытие панелей
+function openPanel(panelId) {
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById(panelId).classList.remove('hidden');
+    
+    if (panelId === 'schedulePanel') renderSchedule();
+    if (panelId === 'sessionPanel') renderSession();
+    if (panelId === 'calendarPanel') renderCalendar();
+}
+
+function closeAllPanels() {
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.add('hidden'));
 }
 
 // Event Listeners
@@ -389,11 +409,10 @@ document.getElementById('prevWeek').addEventListener('click', () => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     
-    const minDate = currentMode === 'schedule' ? scheduleMinDate : sessionMinDate;
-    if (minDate && weekEnd < minDate) return;
+    if (scheduleMinDate && weekEnd < scheduleMinDate) return;
     
     currentWeekOffset--;
-    render();
+    renderSchedule();
 });
 
 document.getElementById('nextWeek').addEventListener('click', () => {
@@ -401,66 +420,85 @@ document.getElementById('nextWeek').addEventListener('click', () => {
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay() + 1 + ((currentWeekOffset + 1) * 7));
     
-    const maxDate = currentMode === 'schedule' ? scheduleMaxDate : sessionMaxDate;
-    if (maxDate && weekStart > maxDate) return;
+    if (scheduleMaxDate && weekStart > scheduleMaxDate) return;
     
     currentWeekOffset++;
-    render();
+    renderSchedule();
 });
 
 document.getElementById('todayBtn').addEventListener('click', () => {
     currentWeekOffset = 0;
-    render();
+    renderSchedule();
+});
+
+document.getElementById('prevSessionWeek').addEventListener('click', () => {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + ((sessionWeekOffset - 1) * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    if (sessionMinDate && weekEnd < sessionMinDate) return;
+    
+    sessionWeekOffset--;
+    renderSession();
+});
+
+document.getElementById('nextSessionWeek').addEventListener('click', () => {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1 + ((sessionWeekOffset + 1) * 7));
+    
+    if (sessionMaxDate && weekStart > sessionMaxDate) return;
+    
+    sessionWeekOffset++;
+    renderSession();
 });
 
 document.getElementById('prevMonth').addEventListener('click', () => {
     currentMonthOffset--;
-    render();
+    renderCalendar();
 });
 
 document.getElementById('nextMonth').addEventListener('click', () => {
     currentMonthOffset++;
-    render();
+    renderCalendar();
 });
 
 document.getElementById('scheduleBtn').addEventListener('click', () => {
-    if (currentView === 'calendar') {
-        currentView = 'list';
-    } else {
-        currentMode = currentMode === 'schedule' ? 'session' : 'schedule';
-    }
-    updateNavButtons();
-    render();
+    openPanel('schedulePanel');
+});
+
+document.getElementById('sessionBtn').addEventListener('click', () => {
+    openPanel('sessionPanel');
 });
 
 document.getElementById('calendarBtn').addEventListener('click', () => {
-    currentView = 'calendar';
-    updateNavButtons();
-    render();
+    openPanel('calendarPanel');
+});
+
+document.getElementById('updatesBtn').addEventListener('click', () => {
+    openPanel('updatesPanel');
+});
+
+document.querySelectorAll('.close-panel-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const panelId = btn.getAttribute('data-panel');
+        document.getElementById(panelId).classList.add('hidden');
+    });
 });
 
 document.getElementById('groupSelect').addEventListener('change', (e) => {
     selectedGroup = e.target.value;
-    render();
-});
-
-// Панель обновлений
-document.getElementById('updatesBtn').addEventListener('click', () => {
-    document.getElementById('updatesPanel').classList.remove('hidden');
-});
-
-document.getElementById('closeUpdates').addEventListener('click', () => {
-    document.getElementById('updatesPanel').classList.add('hidden');
+    renderSchedule();
+    renderSession();
 });
 
 document.addEventListener('click', (e) => {
-    const panel = document.getElementById('updatesPanel');
-    const btn = document.getElementById('updatesBtn');
-    if (!panel.contains(e.target) && !btn.contains(e.target)) {
-        panel.classList.add('hidden');
+    if (!e.target.closest('.side-panel') && !e.target.closest('.nav-btn')) {
+        closeAllPanels();
     }
 });
 
 // Инициализация
-updateNavButtons();
 loadData();
