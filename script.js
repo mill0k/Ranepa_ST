@@ -1,15 +1,14 @@
 let currentMode = 'schedule'; // 'schedule' или 'session'
 let currentView = 'list';     // 'list' или 'calendar'
+let currentGroup = 'both';    // '1', '2', 'both'
 let scheduleData = [];
 let sessionData = [];
 
-// Навигация
-let weekOffset = 0;  // смещение недель от текущей
-let monthOffset = 0; // смещение месяцев от текущего
+let weekOffset = 0;
+let monthOffset = 0;
 
 const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", 
                      "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const DAY_NAMES_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 
 async function loadData() {
@@ -40,8 +39,23 @@ async function loadData() {
         render();
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #8e8e93; padding: 40px;">⚠️ Не удалось загрузить расписание</p>';
+        document.getElementById('scheduleList').innerHTML = '<p style="text-align:center; color: #8B7D6B; padding: 40px;">⚠️ Не удалось загрузить расписание</p>';
     }
+}
+
+// ===== ФИЛЬТРАЦИЯ ПО ГРУППЕ =====
+function filterByGroup(data, group) {
+    if (group === 'both') return data;
+    
+    return data.filter(lesson => {
+        const g = lesson.group || '';
+        if (group === '1') {
+            return g.includes('01');
+        } else if (group === '2') {
+            return g.includes('02');
+        }
+        return true;
+    });
 }
 
 // ===== УТИЛИТЫ ДАТ =====
@@ -56,13 +70,6 @@ function formatDateKey(d) {
     return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`;
 }
 
-function parseDate(dateStr, monthStr) {
-    const d = parseInt(dateStr);
-    const m = parseInt(monthStr) - 1;
-    const year = new Date().getFullYear();
-    return new Date(year, m, d);
-}
-
 function isSameDay(d1, d2) {
     return d1.getDate() === d2.getDate() && 
            d1.getMonth() === d2.getMonth() && 
@@ -71,7 +78,8 @@ function isSameDay(d1, d2) {
 
 // ===== РЕНДЕР =====
 function render() {
-    const data = currentMode === 'schedule' ? scheduleData : sessionData;
+    const rawData = currentMode === 'schedule' ? scheduleData : sessionData;
+    const data = filterByGroup(rawData, currentGroup);
     
     if (currentView === 'list') {
         document.getElementById('scheduleView').classList.remove('hidden');
@@ -92,7 +100,6 @@ function renderScheduleList(data) {
     const container = document.getElementById('scheduleList');
     container.innerHTML = '';
     
-    // Группируем по датам
     const grouped = {};
     data.forEach(lesson => {
         if (!lesson.date) return;
@@ -103,14 +110,12 @@ function renderScheduleList(data) {
         grouped[dateKey].lessons.push(lesson);
     });
     
-    // Сортируем даты
     const sortedDates = Object.keys(grouped).sort((a, b) => {
         const [d1, m1] = a.split('.').map(Number);
         const [d2, m2] = b.split('.').map(Number);
         return new Date(2026, m1-1, d1) - new Date(2026, m2-1, d2);
     });
     
-    // Определяем диапазон недели
     const today = new Date();
     const monday = getMonday(today);
     const targetMonday = new Date(monday);
@@ -118,7 +123,6 @@ function renderScheduleList(data) {
     const sunday = new Date(targetMonday);
     sunday.setDate(targetMonday.getDate() + 6);
     
-    // Фильтруем даты в диапазоне недели
     const weekDates = sortedDates.filter(dateKey => {
         const [d, m] = dateKey.split('.').map(Number);
         const year = today.getFullYear();
@@ -126,7 +130,6 @@ function renderScheduleList(data) {
         return lessonDate >= targetMonday && lessonDate <= sunday;
     });
     
-    // Обновляем заголовок
     const weekTitle = document.getElementById('weekTitle');
     if (weekOffset === 0) {
         weekTitle.textContent = 'Текущая неделя';
@@ -139,7 +142,7 @@ function renderScheduleList(data) {
     }
     
     if (weekDates.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color: #8e8e93; padding: 40px;">На этой неделе пар нет 🎉</p>';
+        container.innerHTML = '<p style="text-align:center; color: #8B7D6B; padding: 40px;">На этой неделе пар нет 🎉</p>';
         return;
     }
     
@@ -202,7 +205,6 @@ function renderCalendar(data) {
     const year = today.getFullYear();
     const month = today.getMonth() + monthOffset;
     
-    // Корректировка года при переходе через декабрь/январь
     const actualYear = year + Math.floor(month / 12);
     const actualMonth = ((month % 12) + 12) % 12;
     
@@ -248,8 +250,7 @@ function renderCalendar(data) {
         numDiv.textContent = d;
         div.appendChild(numDiv);
         
-        // Показываем до 3 событий
-        const maxShow = 3;
+        const maxShow = 2;
         dayLessons.slice(0, maxShow).forEach(lesson => {
             const event = document.createElement('div');
             event.className = 'cal-event';
@@ -268,11 +269,11 @@ function renderCalendar(data) {
         }
         
         div.addEventListener('click', () => {
-            // Переходим к списку на эту неделю
             const monday = getMonday(date);
             const todayMonday = getMonday(today);
             weekOffset = Math.round((monday - todayMonday) / (7 * 24 * 60 * 60 * 1000));
             currentView = 'list';
+            updateRoundButtons();
             render();
         });
         
@@ -281,24 +282,40 @@ function renderCalendar(data) {
 }
 
 // ===== ОБРАБОТЧИКИ =====
-document.getElementById('modeSchedule').addEventListener('click', () => {
+function updateRoundButtons() {
+    document.getElementById('btnSchedule').classList.toggle('active', currentView === 'list' && currentMode === 'schedule');
+    document.getElementById('btnSession').classList.toggle('active', currentView === 'list' && currentMode === 'session');
+    document.getElementById('btnCalendar').classList.toggle('active', currentView === 'calendar');
+}
+
+document.getElementById('btnSchedule').addEventListener('click', () => {
     currentMode = 'schedule';
-    document.getElementById('modeSchedule').classList.add('active');
-    document.getElementById('modeSession').classList.remove('active');
+    currentView = 'list';
+    updateRoundButtons();
     render();
 });
 
-document.getElementById('modeSession').addEventListener('click', () => {
+document.getElementById('btnSession').addEventListener('click', () => {
     currentMode = 'session';
-    document.getElementById('modeSession').classList.add('active');
-    document.getElementById('modeSchedule').classList.remove('active');
+    currentView = 'list';
+    updateRoundButtons();
     render();
 });
 
-document.getElementById('toggleView').addEventListener('click', () => {
-    currentView = currentView === 'list' ? 'calendar' : 'list';
-    document.getElementById('fabIcon').textContent = currentView === 'list' ? '📅' : '📋';
+document.getElementById('btnCalendar').addEventListener('click', () => {
+    currentView = 'calendar';
+    updateRoundButtons();
     render();
+});
+
+// Выбор группы
+document.querySelectorAll('.group-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        currentGroup = e.target.dataset.group;
+        render();
+    });
 });
 
 // Навигация по неделям
@@ -316,5 +333,6 @@ document.getElementById('closeChangelog').addEventListener('click', () => {
     document.getElementById('changelogBanner').classList.add('hidden');
 });
 
-// Запуск
+// Инициализация
+updateRoundButtons();
 loadData();
