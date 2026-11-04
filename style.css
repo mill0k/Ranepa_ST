@@ -310,7 +310,7 @@ body {
     visibility: visible;
 }
 
-/* Календарь (увеличенный, одинаковый цвет ячеек) */
+/* Календарь (исправлено наложение, разные цвета) */
 .calendar-container {
     flex: 1;
     overflow-y: auto;
@@ -362,9 +362,8 @@ body {
     color: #f44336;
 }
 
-/* Все ячейки одного цвета */
+/* Базовая ячейка - фиксированная высота, без aspect-ratio */
 .cal-day {
-    aspect-ratio: 1;
     background: var(--card-bg);
     border-radius: 8px;
     display: flex;
@@ -374,16 +373,25 @@ body {
     font-size: 0.85rem;
     cursor: pointer;
     border: 1px solid var(--light-gray);
-    min-height: 100px;
+    height: 100px;
     padding: 5px;
     position: relative;
     overflow: hidden;
 }
 
-/* Выходные - красная рамка */
+/* Выходные - розовый фон */
 .cal-day.weekend {
-    border-color: #f44336;
-    border-width: 2px;
+    background: #ffebee;
+}
+
+/* СДО - синий фон */
+.cal-day.sdo-day {
+    background: #e3f2fd;
+}
+
+/* ДСР - оранжевый фон */
+.cal-day.dsr-day {
+    background: #fff3e0;
 }
 
 /* Сегодня - жирная рамка */
@@ -407,27 +415,6 @@ body {
     background: #999;
     transform: rotate(-35deg);
     pointer-events: none;
-}
-
-/* Метки ДСР и СДО (цветные бейджи) */
-.cal-format-badge {
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    padding: 1px 5px;
-    border-radius: 8px;
-    font-size: 0.55rem;
-    font-weight: 700;
-    color: white;
-    line-height: 1;
-}
-
-.cal-format-badge.dsr {
-    background: var(--dsr-color);
-}
-
-.cal-format-badge.sdo {
-    background: var(--sdo-color);
 }
 
 /* Информация о занятии внутри ячейки */
@@ -606,7 +593,7 @@ body {
     }
     
     .cal-day {
-        min-height: 85px;
+        height: 85px;
     }
     
     .cal-lesson-info {
@@ -619,10 +606,6 @@ body {
     
     .cal-subject, .cal-type, .cal-room {
         font-size: 0.55rem;
-    }
-    
-    .cal-format-badge {
-        font-size: 0.5rem;
     }
     
     .nav-btn {
